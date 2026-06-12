@@ -1,0 +1,1050 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>GAMBLECORE — прототип</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    background: #141519; color: #e8e8ea;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex; justify-content: center;
+    user-select: none; -webkit-user-select: none; overflow: hidden;
+  }
+  #app {
+    width: 100%; max-width: 440px; height: 100%;
+    display: flex; flex-direction: column; gap: 10px; padding: 10px;
+  }
+  #app.shake { animation: shake .4s; }
+  @keyframes shake {
+    0%,100% { transform: translate(0,0); } 20% { transform: translate(-6px,3px); }
+    40% { transform: translate(5px,-4px); } 60% { transform: translate(-4px,2px); }
+    80% { transform: translate(3px,-2px); }
+  }
+
+  /* ── header ── */
+  header { display: flex; gap: 10px; align-items: stretch; }
+  #mascot {
+    width: 92px; flex: none; display: flex; flex-direction: column;
+    align-items: center; gap: 4px;
+  }
+  #mface {
+    width: 64px; height: 64px; border-radius: 14px; background: #24262c;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 38px; transition: transform .2s;
+  }
+  #mface.pop { transform: scale(1.25) rotate(-6deg); }
+  #bubble {
+    font-size: 10.5px; line-height: 1.25; text-align: center; color: #b9bac2;
+    background: #24262c; border-radius: 8px; padding: 4px 6px; width: 100%;
+    min-height: 32px; display: flex; align-items: center; justify-content: center;
+  }
+  #bars { flex: 1; display: flex; flex-direction: column; gap: 7px; }
+  .bar {
+    position: relative; flex: 1; min-height: 26px; border-radius: 9px;
+    background: #2a2c33; overflow: hidden;
+  }
+  .bar .fill {
+    position: absolute; inset: 0; width: 0%;
+    transition: width .35s ease; border-radius: 9px;
+  }
+  .fill.c-spins { background: #4db8e8; }
+  .fill.c-harda { background: #e8556d; }
+  .fill.c-exp   { background: #9fd64e; }
+  .bar .txt {
+    position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: space-between; padding: 0 9px; font-size: 12px;
+    font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.45);
+    white-space: nowrap;
+  }
+  .bar .txt small { font-weight: 500; opacity: .85; }
+  .bar.flash { animation: barflash .5s; }
+  @keyframes barflash { 0%,100% { box-shadow: none; } 50% { box-shadow: 0 0 0 3px #e8556d; } }
+
+  /* ── middle: slot + lever ── */
+  #mid { display: flex; gap: 10px; align-items: stretch; }
+  #main { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  #slotbox {
+    background: #24262c; border-radius: 16px; padding: 12px;
+    display: flex; gap: 8px; position: relative; transition: transform .1s;
+  }
+  .reel {
+    flex: 1; height: 170px; border-radius: 10px; overflow: hidden; position: relative;
+    background: linear-gradient(#d8cf9d, #f7efc8 30%, #f7efc8 70%, #d8cf9d);
+    box-shadow: inset 0 6px 12px rgba(0,0,0,.25), inset 0 -6px 12px rgba(0,0,0,.25);
+  }
+  .strip { position: absolute; left: 0; right: 0; top: 0; will-change: transform; }
+  .strip.blur { filter: blur(1.5px); }
+  .cell {
+    height: 78px; display: flex; align-items: center; justify-content: center;
+  }
+  .cell .sym { font-size: 50px; line-height: 1; pointer-events: none; }
+  .cell.hit { animation: hitpulse .7s ease infinite; }
+  @keyframes hitpulse { 50% { transform: scale(1.25); filter: drop-shadow(0 0 8px #ffd34d); } }
+  .reel.heat { animation: heatpulse .45s ease infinite; }
+  @keyframes heatpulse {
+    50% { box-shadow: 0 0 16px #ffd34d,
+      inset 0 6px 12px rgba(0,0,0,.25), inset 0 -6px 12px rgba(0,0,0,.25); }
+  }
+  #payline {
+    position: absolute; left: 6px; right: 6px; top: 50%; height: 78px;
+    transform: translateY(-50%); pointer-events: none;
+    border-top: 2px solid rgba(255,211,77,.55); border-bottom: 2px solid rgba(255,211,77,.55);
+    border-radius: 4px;
+  }
+  #winline {
+    height: 32px; display: flex; align-items: center; justify-content: center;
+    font-size: 17px; font-weight: 800; color: #ffd34d; position: relative;
+  }
+  .float {
+    position: absolute; font-weight: 800; pointer-events: none;
+    animation: floatup 1.2s ease forwards; white-space: nowrap;
+  }
+  @keyframes floatup { 0% { opacity: 0; transform: translate(-50%, 8px); }
+    20% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -34px); } }
+
+  /* ── lever ── */
+  #rail {
+    width: 64px; flex: none; background: #2a2c33; border-radius: 16px;
+    position: relative; touch-action: none;
+  }
+  #railLbl {
+    position: absolute; top: 8px; left: 0; right: 0; text-align: center;
+    font-size: 10px; font-weight: 700; color: #8a8c96; letter-spacing: .5px;
+  }
+  #railZone {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    top: 30px; bottom: 12px; width: 8px; border-radius: 4px; background: #1c1d22;
+  }
+  #knob {
+    position: absolute; left: 50%; margin-left: -26px; top: 4px;
+    width: 52px; height: 52px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #ff8a7a, #e23b3b 60%, #a32424);
+    box-shadow: 0 4px 10px rgba(0,0,0,.5), inset 0 2px 4px rgba(255,255,255,.35);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; cursor: grab; touch-action: none;
+  }
+  #knob.back { transition: top .25s cubic-bezier(.2,1.6,.4,1); }
+  #knob.off { filter: grayscale(1) brightness(.6); cursor: not-allowed; }
+
+  /* ── meta ── */
+  #meta { background: #24262c; border-radius: 16px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+  #metaRow { display: flex; gap: 8px; }
+  .btn {
+    border: none; border-radius: 12px; background: #3a3d46; color: #e8e8ea;
+    font-weight: 700; font-size: 13px; padding: 12px 6px; flex: 1; cursor: pointer;
+    font-family: inherit;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn.accent { background: #e8556d; }
+  #rebirthBtn {
+    position: relative; overflow: hidden; background: #2f3137; padding: 0; height: 44px;
+  }
+  #rebirthFill {
+    position: absolute; inset: 0; width: 0%; background: #6f9a33;
+    transition: width .35s ease;
+  }
+  #rebirthTxt { position: relative; z-index: 1; line-height: 44px; }
+  #rebirthBtn.ready { animation: glow 1.2s ease infinite; }
+  #rebirthBtn.ready #rebirthFill { background: #9fd64e; }
+  #rebirthBtn.ready #rebirthTxt { color: #1c2208; }
+  @keyframes glow { 50% { box-shadow: 0 0 14px #9fd64e; } }
+  #autoBtn.on { background: #4db8e8; color: #082230; }
+
+  footer {
+    text-align: center; font-size: 10.5px; color: #6f717a; padding-bottom: 4px;
+  }
+  footer a { color: #6f717a; }
+
+  /* ── modal ── */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.65); display: none;
+    align-items: center; justify-content: center; z-index: 10;
+  }
+  .overlay.show { display: flex; }
+  .sheet {
+    background: #24262c; border-radius: 16px; padding: 18px;
+    width: min(92%, 360px); display: flex; flex-direction: column; gap: 12px;
+  }
+  .sheet h2 { font-size: 17px; }
+  .sheet p { font-size: 13px; color: #b9bac2; line-height: 1.45; }
+  .sheet .big { font-size: 15px; color: #e8e8ea; font-weight: 700; }
+
+  .confetti {
+    position: fixed; width: 10px; height: 10px; top: 30%; left: 50%; z-index: 20;
+    pointer-events: none; animation: conf 1.1s ease-out forwards;
+  }
+  @keyframes conf {
+    0% { transform: translate(0,0) rotate(0); opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) rotate(540deg); opacity: 0; }
+  }
+
+  /* ── эмодзи-бёрст выигрыша ── */
+  .burst {
+    position: fixed; z-index: 20; pointer-events: none; opacity: 0;
+    animation: burstfly 1.25s cubic-bezier(.15,.65,.35,1) forwards;
+  }
+  @keyframes burstfly {
+    0%   { transform: translate(-50%,-50%) scale(.3) rotate(0); opacity: 0; }
+    12%  { opacity: 1; }
+    100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy)))
+           scale(var(--sc)) rotate(var(--rot)); opacity: 0; }
+  }
+  .ring {
+    position: fixed; z-index: 19; width: 20px; height: 20px; margin: -10px 0 0 -10px;
+    border: 3px solid #ffd34d; border-radius: 50%; pointer-events: none;
+    animation: ringex .65s ease-out forwards;
+  }
+  @keyframes ringex { 0% { transform: scale(.4); opacity: .9; } 100% { transform: scale(9); opacity: 0; } }
+
+  /* ── гача ── */
+  .sheet.scroll { max-height: 86vh; overflow-y: auto; }
+  .ggrid, .cgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .girl {
+    background: #2f3137; border-radius: 12px; padding: 8px 4px;
+    text-align: center; font-size: 12px; cursor: pointer;
+  }
+  .girl:active { transform: scale(.96); }
+  .girl .gava { font-size: 34px; line-height: 1.3; }
+  .girl .gprog { color: #8a8c96; font-size: 11px; }
+  .girl.done { box-shadow: 0 0 10px rgba(255,211,77,.7); }
+  .gcard {
+    background: #2f3137; border-radius: 10px; padding: 8px 4px;
+    text-align: center; font-size: 10.5px; color: #b9bac2;
+  }
+  .gcard .ce { font-size: 26px; line-height: 1.4; }
+  .gcard.no { opacity: .4; }
+  .gcard.gplat { grid-column: 1 / -1; }
+  .gcard.gplat:not(.no) {
+    background: linear-gradient(135deg, #3a3322, #4a3d1f);
+    box-shadow: 0 0 12px rgba(255,211,77,.55); color: #ffd34d; font-weight: 700;
+  }
+
+  /* ── гача-рулетка ── */
+  .girl.sel, .gcard.sel { box-shadow: 0 0 0 2px #ffd34d, 0 0 16px #ffd34d; }
+  .girl.winflash { animation: winflash .14s ease 5; }
+  @keyframes winflash { 50% { filter: brightness(2.2); transform: scale(1.1); } }
+  .gcard.reveal { animation: revealpop .6s cubic-bezier(.2,1.4,.4,1); }
+  @keyframes revealpop {
+    0% { transform: scale(.2) rotate(-12deg); }
+    60% { transform: scale(1.18) rotate(3deg); }
+    100% { transform: scale(1); }
+  }
+  .gcard.dupe { animation: dupeshake .5s; }
+  @keyframes dupeshake {
+    0%,100% { transform: translate(0,0); } 20% { transform: translate(-5px,2px); }
+    40% { transform: translate(5px,-2px); } 60% { transform: translate(-4px,-1px); }
+    80% { transform: translate(3px,1px); }
+  }
+  #doubleFx {
+    position: fixed; inset: 0; display: flex; align-items: center;
+    justify-content: center; z-index: 30; pointer-events: none;
+  }
+  .dbltxt {
+    font-size: 56px; font-weight: 900; color: #ffd34d; letter-spacing: 2px;
+    text-shadow: 0 0 24px #ffd34d, 0 4px 0 #a06a00;
+    animation: dblpop 1.4s cubic-bezier(.2,1.4,.4,1) forwards;
+  }
+  @keyframes dblpop {
+    0% { transform: scale(.2) rotate(-8deg); opacity: 0; }
+    15% { opacity: 1; }
+    30% { transform: scale(1.25) rotate(2deg); }
+    45% { transform: scale(1); }
+    80% { opacity: 1; }
+    100% { transform: scale(1.1); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div id="mascot">
+      <div id="mface">😺</div>
+      <div id="bubble">Крути давай!</div>
+    </div>
+    <div id="bars">
+      <div class="bar" id="spinsBar">
+        <div class="fill c-spins" id="spinsFill"></div>
+        <div class="txt"><b>спины</b><span id="spinsVal">—</span></div>
+      </div>
+      <div class="bar">
+        <div class="fill c-harda" id="hardaFill"></div>
+        <div class="txt"><b>харда</b><span id="hardaVal">—</span></div>
+      </div>
+      <div class="bar">
+        <div class="fill c-exp" id="expFill"></div>
+        <div class="txt"><b>экспа</b><span id="expVal">—</span></div>
+      </div>
+    </div>
+  </header>
+
+  <div id="mid">
+    <div id="main">
+      <div id="slotbox">
+        <div class="reel"><div class="strip"></div></div>
+        <div class="reel"><div class="strip"></div></div>
+        <div class="reel"><div class="strip"></div></div>
+        <div id="payline"></div>
+      </div>
+      <div id="winline"></div>
+    </div>
+    <div id="rail">
+      <div id="railLbl">ТЯНИ ↓</div>
+      <div id="railZone"></div>
+      <div id="knob">🎰</div>
+    </div>
+  </div>
+
+  <div id="meta">
+    <div id="metaRow">
+      <button class="btn" disabled>🔒 магазин</button>
+      <button class="btn accent" id="upgBtn">прокачка</button>
+      <button class="btn" id="collBtn">гача 💖</button>
+    </div>
+    <button class="btn" id="rebirthBtn">
+      <div id="rebirthFill"></div><div id="rebirthTxt">—</div>
+    </button>
+    <button class="btn" id="autoBtn">автоспин: выкл</button>
+  </div>
+
+  <footer>
+    спинов: <span id="stSpins">0</span> · выиграно: <span id="stWon">0</span> ·
+    прото-баланс ускорен · <a href="#" id="resetLink">сброс</a>
+  </footer>
+</div>
+
+<div class="overlay" id="upgOverlay">
+  <div class="sheet">
+    <h2>Прокачка 🎲</h2>
+    <p>Каждая покупка усиливает <b>случайный</b> ресурс на +50% (харда, экспа или спины — шанс 1/3). Да, прокачка — тоже гамбл.</p>
+    <p class="big" id="upgState">—</p>
+    <button class="btn accent" id="upgBuy">—</button>
+    <p id="upgLog" style="min-height:18px"></p>
+    <button class="btn" id="upgClose">закрыть</button>
+  </div>
+</div>
+
+<div class="overlay" id="rbOverlay">
+  <div class="sheet">
+    <h2>Перерождение ♻️</h2>
+    <p id="rbInfo">—</p>
+    <p>Сбросится: харда, прокачка.<br>Навсегда: множитель выигрышей <b id="rbMult">—</b>, спины восстановятся полностью.</p>
+    <button class="btn accent" id="rbGo">переродиться</button>
+    <button class="btn" id="rbClose">не сейчас</button>
+  </div>
+</div>
+
+<div class="overlay" id="gachaOverlay">
+  <div class="sheet scroll">
+    <h2 id="gachaTitle">Гача 💖</h2>
+    <div id="gachaBody"></div>
+    <button class="btn accent" id="gachaRoll" style="display:none">—</button>
+    <p id="gachaLog" style="min-height:18px"></p>
+    <button class="btn" id="gachaBack">закрыть</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ═══════════ конфиг — зеркало balance.md (прото-баланс v3) ═══════════ */
+const CELL = 78, PAD = (170 - CELL) / 2;
+// иконки — эмодзи: index.html открывается с диска/телефона без сервера (решение 2026-06-12)
+const SYMS = [
+  { id: "harda", emoji: "🪙", w: 50, pay: 200  },
+  { id: "exp",   emoji: "🧿", w: 27, pay: 1000 },
+  { id: "spins", emoji: "🎲", w: 23, pay: 10   },
+];
+const WSUM = SYMS.reduce((a, s) => a + s.w, 0);
+const REGEN_MS = 15000;          // 1 спин / 15 сек (прото; в проде медленнее)
+const SPINS_MAX = 100;
+const UPG_BASE = 400, UPG_RATIO = 1.4, UPG_MAX = 5;
+const GOALS = [5000, 15000, 40000, 100000, 250000];
+const GACHA_COST = 500; // × global за ролл (balance.md §4a)
+const GIRLS = [
+  { name: "Юки",  ava: "👩" },   { name: "Аска", ava: "👩‍🦰" },  { name: "Рин",    ava: "🧑‍🦰" },
+  { name: "Мика", ava: "👩‍🦱" }, { name: "Хана", ava: "🧑‍🦱" },  { name: "Сора",   ava: "👩‍🦳" },
+  { name: "Юмэ",  ava: "🧑‍🦳" }, { name: "Рэй",  ava: "👩‍🦲" },  { name: "Сакура", ava: "👱‍♀️" },
+];
+
+/* ═══════════ состояние ═══════════ */
+const SAVE_V = 6;
+// DEFAULTS — фабрика: cards/plat — массивы, общие ссылки между ранами недопустимы
+const DEFAULTS = () => ({
+  v: SAVE_V, spins: SPINS_MAX, harda: 0, exp: 0, level: 1,
+  upgCount: 0, hardaMult: 1, expMult: 1, spinsMult: 1,
+  lastRegen: Date.now(), totalSpins: 0, totalWon: 0, auto: false,
+  cards: GIRLS.map(() => Array(9).fill(0)), plat: GIRLS.map(() => false),
+});
+let S = load();
+let spinning = false, loseStreak = 0;
+
+function load() {
+  try {
+    const raw = localStorage.getItem("gamblecore_proto");
+    if (raw) {
+      const d = JSON.parse(raw);
+      if (d.v === SAVE_V) return Object.assign(DEFAULTS(), d);
+    }
+  } catch (e) {}
+  return DEFAULTS();
+}
+function save() { localStorage.setItem("gamblecore_proto", JSON.stringify(S)); }
+
+const global = () => 2 ** (S.level - 1);
+const platMult = () => 2 ** S.plat.filter(Boolean).length; // платиновые карточки гачи: ×2 навсегда, как перерождение
+const goal = () => GOALS[S.level - 1] ?? GOALS[GOALS.length - 1] * 2.5 ** (S.level - GOALS.length);
+const upgCost = () => Math.round(UPG_BASE * global() * UPG_RATIO ** S.upgCount); // цена привязана к инфляции (balance.md A2.4)
+const fmt = n => n >= 1e9 ? (n / 1e9).toFixed(1) + "B"
+              : n >= 1e6 ? (n / 1e6).toFixed(1) + "M"
+              : n >= 1e4 ? (n / 1e3).toFixed(1) + "K" : Math.round(n).toString();
+
+/* ═══════════ звук (WebAudio, без ассетов) ═══════════ */
+let AC = null;
+function ac() {
+  if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+  if (AC.state === "suspended") AC.resume();
+  return AC;
+}
+function beep(freq, dur, type, vol, when) {
+  try {
+    const c = ac(), o = c.createOscillator(), g = c.createGain();
+    const t = c.currentTime + (when || 0);
+    o.type = type || "square"; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol || .05, t);
+    g.gain.exponentialRampToValueAtTime(.001, t + dur);
+    o.connect(g).connect(c.destination); o.start(t); o.stop(t + dur);
+  } catch (e) {}
+}
+const sTick = () => beep(700 + Math.random() * 200, .025, "square", .025);
+const sThud = () => beep(140, .09, "sine", .12);
+const sCoin = i => beep(520 * 1.25 ** i, .12, "triangle", .07, i * .07);
+function sFanfare() { [0, 4, 7, 12, 16, 19, 24].forEach((n, i) => beep(330 * 2 ** (n / 12), .22, "triangle", .08, i * .09)); }
+const tg = window.Telegram && window.Telegram.WebApp;
+const vibrate = arg => {
+  try {
+    const h = tg && tg.HapticFeedback;            // в TG — богаче navigator.vibrate, работает и на iOS
+    if (h) {
+      if (Array.isArray(arg)) h.notificationOccurred("success");  // паттерны = бигвины
+      else h.impactOccurred(arg <= 20 ? "light" : arg <= 40 ? "medium" : "heavy");
+      return;
+    }
+    navigator.vibrate && navigator.vibrate(arg);
+  } catch (e) {}
+};
+
+/* ═══════════ маскот ═══════════ */
+const mface = document.getElementById("mface"), bubble = document.getElementById("bubble");
+const PHRASES = {
+  idle:    ["Крути давай!", "Сегодня точно повезёт", "Семёрки уже близко, я чувствую", "Ну ещё разок?"],
+  win:     ["Неплохо!", "Вот это да!", "Так держать!", "Ещё! Ещё!"],
+  bigwin:  ["БИГ ВИН!!! 🎉", "ЭТО ЖИРНО!!!", "ВОТ ЭТО Я ПОНИМАЮ!!!"],
+  lose:    ["Не сдавайся!", "Полоса неудач вот-вот кончится", "Я в тебя верю 🥺", "Это автомат разогревается"],
+  low:     ["Спины кончаются... отдохни (или купи 😏)", "Энергия на нуле, передохни"],
+  rebirth: ["ПЕРЕРОЖДЕНИЕ! Рейты удвоены НАВСЕГДА!"],
+};
+let sayTimer = null;
+function say(kind, face) {
+  const arr = PHRASES[kind];
+  bubble.textContent = arr[Math.floor(Math.random() * arr.length)];
+  mface.textContent = face || "😺";
+  mface.classList.remove("pop"); void mface.offsetWidth; mface.classList.add("pop");
+  clearTimeout(sayTimer);
+  sayTimer = setTimeout(() => { mface.textContent = "😺"; say.idleAt = Date.now(); }, 3500);
+}
+setInterval(() => { if (!spinning && Math.random() < .25) say("idle"); }, 12000);
+
+// ЧИТ для отладки (убрать перед релизом): тап по мордочке = полный бак спинов
+mface.style.cursor = "pointer";
+mface.addEventListener("click", () => {
+  S.spins = SPINS_MAX; S.lastRegen = Date.now();
+  bubble.textContent = "🐾 чит: спины полные";
+  mface.classList.remove("pop"); void mface.offsetWidth; mface.classList.add("pop");
+  update(); save();
+});
+
+/* ═══════════ барабаны ═══════════ */
+const randSym = () => {
+  let r = Math.random() * WSUM;
+  for (const s of SYMS) { if ((r -= s.w) < 0) return s; }
+  return SYMS[0];
+};
+// лента барабана — повторяющийся цикл из 3 разных иконок («виртуальный барабан»):
+// соседние символы никогда не совпадают, веса работают только на выбор символа стопа
+const CYCLES = [
+  [SYMS[0], SYMS[1], SYMS[2]],
+  [SYMS[1], SYMS[2], SYMS[0]],
+  [SYMS[2], SYMS[0], SYMS[1]],
+];
+const reels = [...document.querySelectorAll(".reel")].map((el, idx) => {
+  const r = { el, strip: el.querySelector(".strip"), syms: [], center: 4, y: 0, tension: 0, cycle: CYCLES[idx] };
+  for (let i = 0; i < 9; i++) r.syms.push(r.cycle[i % 3]);
+  render(r); setY(r, PAD - r.center * CELL);
+  return r;
+});
+function render(r) {
+  r.strip.innerHTML = r.syms.map(s => `<div class="cell"><span class="sym">${s.emoji}</span></div>`).join("");
+}
+function setY(r, y) { r.y = y; r.strip.style.transform = `translateY(${y}px)`; }
+
+function spinReel(r, target, idx, durMul, heat) {
+  return new Promise(resolve => {
+    // подрезаем ленту ДО старта (невидимо), а не при остановке — иначе дёргается
+    r.syms = r.syms.slice(r.center - 4); r.center = 4; r.tension = 0;
+    const nextSym = () => r.cycle[(r.cycle.indexOf(r.syms[r.syms.length - 1]) + 1) % 3];
+    const add = 16 + idx * 6 + (heat ? 16 : 0); // при прогреве длиннее лента, скорость та же
+    for (let i = 0; i < add; i++) r.syms.push(nextSym());
+    // довертеть цикл так, чтобы целевой символ лёг на центральную линию (макс +2 ячейки)
+    while (r.syms[r.syms.length - 2] !== target) r.syms.push(nextSym());
+    const newCenter = r.syms.length - 2;
+    render(r);
+    const y0 = PAD - r.center * CELL, y1 = PAD - newCenter * CELL;
+    setY(r, y0);
+    if (heat) r.el.classList.add("heat");
+    const dur = (950 + idx * 380) * durMul;
+    const CUT = .82; // на 82% пути изинг передаёт скорость пружине — без полной остановки
+    const t0 = performance.now();
+    let lastCell = 0;
+    if (r.spring) { cancelAnimationFrame(r.spring); r.spring = null; }
+    r.strip.classList.add("blur");
+    (function frame(now) {
+      const t = Math.min(1, (now - t0) / dur);
+      if (t < CUT) {
+        const e = 1 - (1 - t) ** 3; // easeOutCubic: резкий старт от рывка руки
+        const y = y0 + (y1 - y0) * e;
+        setY(r, y);
+        const cellPos = Math.floor(-y / CELL);
+        if (cellPos !== lastCell) { lastCell = cellPos; sTick(); }
+        if (t > .7) r.strip.classList.remove("blur");
+        requestAnimationFrame(frame);
+        return;
+      }
+      // стыковка: затухающая пружина продолжает движение с ТЕКУЩЕЙ скоростью —
+      // барабан по инерции пролетает точку, возвращается и колеблется в ноль
+      let y = y0 + (y1 - y0) * (1 - (1 - CUT) ** 3);
+      let v = (y1 - y0) * 3 * (1 - CUT) ** 2 / dur; // px/мс, производная изинга
+      r.strip.classList.remove("blur");
+      r.el.classList.remove("heat");
+      r.center = newCenter;
+      sThud(); vibrate(15);
+      let last = now;
+      const K = 0.0003, C = 0.0135; // жёсткость/трение: ~1.2 колебания, затухание ~450мс
+      (function springFrame(n) {
+        const dt = Math.min(32, n - last); last = n;
+        v += (K * (y1 - y) - C * v) * dt;
+        y += v * dt;
+        if (Math.abs(y - y1) < .4 && Math.abs(v) < .005) { setY(r, y1); r.spring = null; return; }
+        setY(r, y);
+        r.spring = requestAnimationFrame(springFrame);
+      })(now);
+      resolve();
+    })(t0);
+  });
+}
+
+/* ═══════════ спин и выплаты ═══════════ */
+const winline = document.getElementById("winline");
+function floatText(txt, color, dx) {
+  const f = document.createElement("span");
+  f.className = "float"; f.textContent = txt;
+  f.style.color = color; f.style.left = `calc(50% + ${dx || 0}px)`;
+  f.style.transform = "translateX(-50%)";
+  winline.appendChild(f);
+  setTimeout(() => f.remove(), 1300);
+}
+function confetti() {
+  for (let i = 0; i < 26; i++) {
+    const d = document.createElement("div");
+    d.className = "confetti";
+    d.style.background = `hsl(${Math.random() * 360},90%,60%)`;
+    d.style.setProperty("--dx", (Math.random() * 360 - 180) + "px");
+    d.style.setProperty("--dy", (Math.random() * 300 - 60) + "px");
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), 1200);
+  }
+}
+// разлетающиеся эмодзи выигранного ресурса + блёстки + золотое кольцо из центра слота
+function emojiBurst(emoji, n, big) {
+  const box = document.getElementById("slotbox").getBoundingClientRect();
+  const cx = box.left + box.width / 2, cy = box.top + box.height / 2;
+  const ring = document.createElement("div");
+  ring.className = "ring"; ring.style.left = cx + "px"; ring.style.top = cy + "px";
+  document.body.appendChild(ring);
+  setTimeout(() => ring.remove(), 700);
+  const pool = big ? [emoji, emoji, "✨", "⭐", "💫"] : [emoji, emoji, emoji, "✨"];
+  for (let i = 0; i < n; i++) {
+    const d = document.createElement("span");
+    d.className = "burst";
+    d.textContent = pool[Math.floor(Math.random() * pool.length)];
+    const a = Math.random() * Math.PI * 2, dist = 70 + Math.random() * (big ? 160 : 110);
+    d.style.left = cx + "px"; d.style.top = cy + "px";
+    d.style.fontSize = (40 + Math.random() * 32) + "px";
+    d.style.setProperty("--dx", Math.cos(a) * dist + "px");
+    d.style.setProperty("--dy", (Math.sin(a) * dist - 30) + "px");
+    d.style.setProperty("--rot", (Math.random() * 720 - 360) + "deg");
+    d.style.setProperty("--sc", (.5 + Math.random() * .9).toFixed(2));
+    d.style.animationDelay = (Math.random() * .12) + "s";
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), 1600);
+  }
+}
+
+async function doSpin(durMul, handY) {
+  if (spinning || S.spins < 1) {
+    if (S.spins < 1) {
+      const b = document.getElementById("spinsBar");
+      b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash");
+      say("low", "😿");
+    }
+    if (handY != null) knobTo(0, true);
+    return;
+  }
+  spinning = true;
+  S.spins--; S.totalSpins++;
+  winline.textContent = "";
+  document.querySelectorAll(".cell.hit").forEach(c => c.classList.remove("hit"));
+  update();
+  // целевые символы решаются заранее → знаем, нужен ли «прогрев» третьего барабана
+  const targets = reels.map(() => randSym());
+  const heatSym = targets[0] === targets[1] ? targets[0] : null;
+  const heatMul = heatSym ? (heatSym.id === "harda" ? 1.45 : 1.9) : 1;
+  // рука-индикатор: возвращается за 90% времени барабанов (прогрев растягивает
+  // и руку) — взвод кончается ровно к стыковке третьего барабана (feel.md §1a)
+  if (handY != null) knobReturn(handY, (950 + 2 * 380) * durMul * heatMul * HAND_RETURN);
+  await Promise.all(reels.map((r, i) =>
+    spinReel(r, targets[i], i, i === 2 ? durMul * heatMul : durMul, i === 2 && !!heatSym)));
+  evaluate();
+  spinning = false;
+  update(); save();
+}
+
+function bigCelebrate() {
+  sFanfare(); confetti(); vibrate([60, 40, 120]);
+  const app = document.getElementById("app");
+  app.classList.remove("shake"); void app.offsetWidth; app.classList.add("shake");
+}
+
+function evaluate() {
+  const centers = reels.map(r => r.syms[r.center]);
+  // только 3 в ряд, две иконки — мусор
+  if (centers[0] !== centers[1] || centers[1] !== centers[2]) {
+    loseStreak++;
+    if (loseStreak >= 8 && Math.random() < .5) { say("lose", "😿"); loseStreak = 0; }
+    return;
+  }
+  const sym = centers[0], g = global();
+  loseStreak = 0;
+  reels.forEach(r => r.strip.children[r.center].classList.add("hit"));
+
+  if (sym.id === "harda") {
+    const amt = Math.round(sym.pay * g * S.hardaMult * platMult());
+    S.harda += amt; S.totalWon += amt;
+    winline.textContent = "WIN +" + fmt(amt) + " харды";
+    floatText("+" + fmt(amt) + " 🪙", "#e8556d", 0);
+    emojiBurst("🪙", 14);
+    for (let i = 0; i < 4; i++) sCoin(i);
+    if (Math.random() < .4) say("win", "😸");
+  } else if (sym.id === "exp") {
+    const amt = Math.round(sym.pay * g * S.expMult * platMult());
+    S.exp += amt;
+    winline.textContent = "🔥 BIG WIN +" + fmt(amt) + " экспы";
+    floatText("+" + fmt(amt) + " 🧿", "#9fd64e", 0);
+    emojiBurst("🧿", 22, true);
+    bigCelebrate(); say("bigwin", "🤩");
+  } else if (sym.id === "spins") {
+    // база 10, шаг множителя 0.5 → выплата всегда целая (10/15/20/...)
+    const pay = Math.round(sym.pay * S.spinsMult);
+    const credited = Math.min(pay, SPINS_MAX - S.spins); // кап жёсткий, излишек сгорает
+    S.spins += credited;
+    winline.textContent = credited > 0 ? "🔥 BIG WIN +" + credited + " спинов" : "🎲 спины уже полные!";
+    if (credited > 0) floatText("+" + credited + " 🎲", "#4db8e8", 0);
+    emojiBurst("🎲", 22, true);
+    bigCelebrate(); say("bigwin", "🤩");
+  }
+}
+
+/* ═══════════ натяжение лент от рычага (каскад слева-направо) ═══════════ */
+// панель стоит на месте; ленты барабанов прокручиваются вниз: левый отзывается
+// первым и глубже, правые догоняют с запаздыванием
+const TENSION_DEPTH = [16, 12, 8];   // px на полном ходу рычага
+const TENSION_LAG   = [0.4, 0.25, 0.15]; // скорость следования за рычагом
+let tensionTarget = 0, tensionRAF = null;
+function tensionFrame() {
+  let active = false;
+  reels.forEach((r, i) => {
+    // пружина остановки ещё пишет transform (хвост после resolve) — не мешаем ей
+    const busy = spinning || r.spring;
+    const goal = busy ? 0 : tensionTarget * TENSION_DEPTH[i];
+    r.tension += (goal - r.tension) * TENSION_LAG[i];
+    if (Math.abs(goal - r.tension) > .1) active = true; else r.tension = goal;
+    if (!busy) r.strip.style.transform = `translateY(${r.y + r.tension}px)`;
+  });
+  tensionRAF = (active || tensionTarget > 0) ? requestAnimationFrame(tensionFrame) : null;
+}
+function setTension(t) {
+  tensionTarget = t;
+  if (!tensionRAF) tensionRAF = requestAnimationFrame(tensionFrame);
+}
+
+/* ═══════════ рука-рычаг ═══════════ */
+const rail = document.getElementById("rail"), knob = document.getElementById("knob");
+let drag = null;
+const knobRange = () => rail.clientHeight - knob.offsetHeight - 8;
+
+function knobTo(y, anim) {
+  knob.classList.toggle("back", !!anim);
+  knob.style.top = (4 + y) + "px";
+}
+
+// возврат руки — индикатор «слот крутится»: перехватить нельзя, пока идёт взвод.
+// Длительность = 90% времени барабанов (HAND_RETURN): третий барабан стыкуется на
+// 82% номинала, взвод кончается на 90%×90% = 81% — рука готова ровно к стыковке,
+// мёртвого времени нет. Кривая «взвода»: мягкий старт → разгон → рывок во второй
+// половине (ease-in t²), дальше скорость идёт пружине. Отскок у верха — косметика
+// (knobSpring): рука уже боеспособна, новый жест отменяет его, как пружины барабанов
+const HAND_RETURN = .9;
+let knobRAF = null, knobSpring = null;
+function knobReturn(fromY, durMs) {
+  if (knobRAF) cancelAnimationFrame(knobRAF);
+  if (knobSpring) { cancelAnimationFrame(knobSpring); knobSpring = null; }
+  knob.classList.remove("back");
+  const t0 = performance.now(), CUT = .9;
+  (function frame(now) {
+    const t = Math.min(1, (now - t0) / durMs);
+    if (t < CUT) {
+      knobTo(fromY * (1 - t * t)); // ease-in-quad: трогается заметно, рывок во второй половине
+      knobRAF = requestAnimationFrame(frame);
+      return;
+    }
+    knobRAF = null; // взвод окончен — рука свободна, отскок дотухает фоном
+    let y = fromY * (1 - CUT * CUT);
+    let v = -fromY * 2 * CUT / durMs; // px/мс, продолжаем с текущей скоростью
+    let last = now;
+    const K = 0.0003, C = 0.02; // трение выше барабанного: один короткий отскок у верха
+    (function springFrame(n) {
+      const dt = Math.min(32, n - last); last = n;
+      v += (K * (0 - y) - C * v) * dt;
+      y += v * dt;
+      if (Math.abs(y) < .4 && Math.abs(v) < .005) { knobTo(0); knobSpring = null; return; }
+      knobTo(y);
+      knobSpring = requestAnimationFrame(springFrame);
+    })(now);
+  })(t0);
+}
+knob.addEventListener("pointerdown", e => {
+  if (spinning || knobRAF) return; // рука взводится = слот занят, перехват запрещён
+  if (S.spins < 1) { doSpin(1); return; }
+  ac(); // разблокировать звук жестом
+  if (knobSpring) { cancelAnimationFrame(knobSpring); knobSpring = null; knobTo(0); }
+  knob.setPointerCapture(e.pointerId);
+  drag = { startY: e.clientY, y: 0, hist: [[e.clientY, performance.now()]], armed: false };
+  knob.classList.remove("back");
+});
+knob.addEventListener("pointermove", e => {
+  if (!drag) return;
+  drag.y = Math.max(0, Math.min(knobRange(), e.clientY - drag.startY));
+  drag.hist.push([e.clientY, performance.now()]);
+  if (drag.hist.length > 6) drag.hist.shift();
+  knobTo(drag.y);
+  const pull = drag.y / knobRange();
+  setTension(pull);
+  if (pull >= .6 && !drag.armed) { drag.armed = true; sTick(); vibrate(20); }
+  if (pull < .6) drag.armed = false;
+});
+function dragEnd() {
+  if (!drag) return;
+  const pull = drag.y / knobRange(), handY = drag.y;
+  let speed = 0;
+  if (drag.hist.length > 1) {
+    const [y0, t0] = drag.hist[0], [y1, t1] = drag.hist[drag.hist.length - 1];
+    speed = t1 > t0 ? Math.max(0, (y1 - y0) / (t1 - t0)) : 0; // px/ms вниз
+  }
+  drag = null;
+  setTension(0);
+  if (pull >= .6) {
+    // кноб НЕ отстреливает назад — doSpin поведёт его руки-индикатором на время спина
+    const durMul = Math.max(.7, Math.min(1.35, 1.35 - speed * .25));
+    doSpin(durMul, handY);
+  } else {
+    knobTo(0, true); // недотянул — пружина назад как раньше
+  }
+}
+knob.addEventListener("pointerup", dragEnd);
+knob.addEventListener("pointercancel", dragEnd);
+document.addEventListener("keydown", e => {
+  if (e.code === "Space") { e.preventDefault(); if (!knobRAF) doSpin(.9); }
+});
+
+/* ═══════════ автоспин ═══════════ */
+const autoBtn = document.getElementById("autoBtn");
+autoBtn.addEventListener("click", () => {
+  S.auto = !S.auto; ac(); update(); save();
+});
+// автоспин: цена та же, медленность — в самих барабанах (durMul 2.2 против ручных
+// 0.7–1.35). Руку автоспин НЕ задействует — рука только про ручную игру.
+// «турбо-автоспин» (нормальная скорость барабанов) — будущий инап (balance.md §2a)
+const AUTO_DURMUL = 2.2;
+setInterval(() => { if (S.auto && !spinning && S.spins >= 1) doSpin(AUTO_DURMUL); }, 300);
+
+/* ═══════════ реген спинов ═══════════ */
+function regen() {
+  const now = Date.now();
+  if (S.spins >= SPINS_MAX) { S.lastRegen = now; return; }
+  while (now - S.lastRegen >= REGEN_MS && S.spins < SPINS_MAX) {
+    S.spins++; S.lastRegen += REGEN_MS;
+  }
+  if (S.spins >= SPINS_MAX) S.lastRegen = now;
+}
+setInterval(() => { regen(); update(); }, 1000);
+
+/* ═══════════ прокачка ═══════════ */
+const upgOverlay = document.getElementById("upgOverlay");
+document.getElementById("upgBtn").addEventListener("click", () => { upgOverlay.classList.add("show"); update(); });
+document.getElementById("upgClose").addEventListener("click", () => upgOverlay.classList.remove("show"));
+document.getElementById("upgBuy").addEventListener("click", () => {
+  const cost = upgCost();
+  if (S.upgCount >= UPG_MAX || S.harda < cost) return;
+  S.harda -= cost; S.upgCount++;
+  const roll = Math.floor(Math.random() * 3);
+  let label;
+  if (roll === 0)      { S.hardaMult += .5; label = "ХАРДЕ! Теперь x" + S.hardaMult; }
+  else if (roll === 1) { S.expMult   += .5; label = "ЭКСПЕ! Теперь x" + S.expMult; }
+  else { S.spinsMult += .5; label = "СПИНАМ! Тройка даёт +" + Math.round(10 * S.spinsMult); }
+  document.getElementById("upgLog").textContent = "🎲 Выпало: +50% к " + label;
+  sCoin(0); sCoin(2); vibrate(30);
+  update(); save();
+});
+
+/* ═══════════ перерождение ═══════════ */
+const rbOverlay = document.getElementById("rbOverlay");
+document.getElementById("rebirthBtn").addEventListener("click", () => {
+  document.getElementById("rbInfo").textContent =
+    `Экспа: ${fmt(S.exp)} / ${fmt(goal())}. ` +
+    (S.exp >= goal() ? "Готово к перерождению!" : "Пока не хватает.");
+  document.getElementById("rbMult").textContent = "x" + 2 ** S.level;
+  document.getElementById("rbGo").disabled = S.exp < goal();
+  rbOverlay.classList.add("show");
+});
+document.getElementById("rbClose").addEventListener("click", () => rbOverlay.classList.remove("show"));
+document.getElementById("rbGo").addEventListener("click", () => {
+  if (S.exp < goal()) return;
+  S.level++; S.exp = 0; S.harda = 0;
+  S.upgCount = 0; S.hardaMult = 1; S.expMult = 1; S.spinsMult = 1;
+  S.spins = SPINS_MAX;
+  rbOverlay.classList.remove("show");
+  sFanfare(); confetti(); confetti(); vibrate([80, 50, 80, 50, 200]);
+  say("rebirth", "🤩");
+  update(); save();
+});
+
+/* ═══════════ гача-коллекция ═══════════ */
+// ролл без выбора (решение 2026-06-12 v2): рулетка сначала выбирает девочку (1/9),
+// потом её карточку (1/9) — равномерно 1/81. Дубль — эффект DOUBLE и утешительные
+// спины (кап жёсткий), не харда. Полный сет → платиновая: ×2 к тройкам харды/экспы
+// НАВСЕГДА (переживает перерождение, как global). balance.md §4a
+const rollCost = () => Math.round(GACHA_COST * global());
+const DUPE_SPINS = 10;
+// эмодзи карточек — детерминированные «рандомные»: внутри девочки не повторяются
+const CARD_EMOJI = ["🌸","🍓","🎀","🍰","💄","🌙","💎","🍷","🧁","🌺","🎶","🍒",
+  "💋","🦋","🌊","🔥","🍑","✨","🎧","🍭","🌈","🍾","💌","🌹","🍫","🎵","🪞","👠",
+  "💍","🛁","🌟","🍸","🎐","🧸","🪐","🩰"];
+const cardEmoji = (g, c) => CARD_EMOJI[(g * 13 + c * 5) % CARD_EMOJI.length];
+const PLAT_EMOJI = ["💝","💖","💘","💞","💓","💗","💕","❤️‍🔥","💟"];
+
+const gachaOverlay = document.getElementById("gachaOverlay");
+const gachaTitle = document.getElementById("gachaTitle"), gachaBody = document.getElementById("gachaBody");
+const gachaRoll = document.getElementById("gachaRoll"), gachaLog = document.getElementById("gachaLog");
+const gachaBack = document.getElementById("gachaBack");
+let gachaGirl = null; // null = галерея, число = страница девочки
+let rolling = false;  // идёт рулетка — навигация и кнопки заморожены
+
+function renderGacha() {
+  if (gachaGirl === null) {
+    gachaTitle.textContent = "Гача 💖";
+    gachaBody.innerHTML = `<div class="ggrid">` + GIRLS.map((girl, i) => {
+      const owned = S.cards[i].filter(n => n > 0).length;
+      return `<div class="girl${S.plat[i] ? " done" : ""}" data-g="${i}">
+        <div class="gava">${girl.ava}</div><div>${girl.name}</div>
+        <div class="gprog">${S.plat[i] ? "⭐ 10/10" : owned + "/9"}</div></div>`;
+    }).join("") + `</div>`;
+    gachaRoll.style.display = "";
+    gachaRoll.textContent = `РОЛЛ — ${fmt(rollCost())} 🪙`;
+    gachaRoll.disabled = rolling || S.harda < rollCost();
+    gachaBack.textContent = "закрыть";
+  } else {
+    const i = gachaGirl;
+    gachaTitle.textContent = GIRLS[i].ava + " " + GIRLS[i].name;
+    let html = `<div class="cgrid">`;
+    for (let c = 0; c < 9; c++) {
+      const cnt = S.cards[i][c];
+      html += cnt > 0
+        ? `<div class="gcard"><div class="ce">${cardEmoji(i, c)}</div>изобр. ${c + 1}${cnt > 1 ? " ×" + cnt : ""}</div>`
+        : `<div class="gcard no"><div class="ce">❓</div>изобр. ${c + 1}</div>`;
+    }
+    html += S.plat[i]
+      ? `<div class="gcard gplat"><div class="ce">${PLAT_EMOJI[i]}</div>ПЛАТИНОВАЯ КАРТОЧКА · ВИДЕО · рейты ×2 навсегда</div>`
+      : `<div class="gcard gplat no"><div class="ce">🔒</div>собери все 9 — платиновая карточка: рейты ×2 навсегда</div>`;
+    gachaBody.innerHTML = html + `</div>`;
+    gachaRoll.style.display = "none";
+    gachaBack.textContent = "← к девочкам";
+  }
+}
+
+// рулетка: рамка цвета прогрева бежит по элементам слева-направо сверху-вниз,
+// несколько кругов, быстро → томительно (ease-in-quad по задержке между шагами)
+function roulette(items, targetIdx, loops, done) {
+  const total = loops * items.length + targetIdx;
+  let k = 0, cur = -1;
+  (function step() {
+    if (cur >= 0) items[cur].classList.remove("sel");
+    cur = k % items.length;
+    items[cur].classList.add("sel");
+    sTick();
+    if (k >= total) { done(items[cur]); return; }
+    const t = k / total; k++;
+    setTimeout(step, 50 + 280 * t * t);
+  })();
+}
+
+const sDouble = () => { beep(200, .12, "square", .12); beep(150, .18, "square", .12, .1); beep(100, .3, "square", .1, .2); };
+function doubleFx() {
+  const d = document.createElement("div");
+  d.id = "doubleFx";
+  d.innerHTML = `<div class="dbltxt">DOUBLE!</div>`;
+  document.body.appendChild(d);
+  setTimeout(() => d.remove(), 1500);
+  const app = document.getElementById("app");
+  app.classList.remove("shake"); void app.offsetWidth; app.classList.add("shake");
+}
+
+function revealCard(g, c, cell) {
+  cell.classList.remove("sel");
+  if (S.cards[g][c] > 0) {
+    // дубль: DOUBLE на весь экран + тряска + разлёт 🎲 + утешительные спины
+    S.cards[g][c]++;
+    const credited = Math.min(DUPE_SPINS, SPINS_MAX - S.spins);
+    S.spins += credited;
+    cell.classList.add("dupe");
+    sDouble(); vibrate([60, 40, 120]);
+    doubleFx();
+    emojiBurst("🎲", 22, true);
+    gachaLog.textContent = credited > 0
+      ? `💥 DOUBLE! «изобр. ${c + 1}» уже есть — утешение +${credited} 🎲`
+      : `💥 DOUBLE! «изобр. ${c + 1}» уже есть — спины полные, утешение сгорело`;
+  } else {
+    S.cards[g][c] = 1;
+    cell.classList.remove("no");
+    cell.innerHTML = `<div class="ce">${cardEmoji(g, c)}</div>изобр. ${c + 1}`;
+    cell.classList.add("reveal");
+    for (let k = 0; k < 4; k++) sCoin(k);
+    vibrate(30);
+    if (S.cards[g].every(n => n > 0)) {
+      S.plat[g] = true;
+      gachaLog.textContent = `⭐ ПЛАТИНОВАЯ КАРТОЧКА: ${GIRLS[g].name}! Рейты ×2 навсегда!`;
+      bigCelebrate(); emojiBurst("⭐", 24, true);
+    } else {
+      gachaLog.textContent = `🎉 НОВАЯ: «изобр. ${c + 1}» ${cardEmoji(g, c)}`;
+    }
+  }
+  update(); save();
+  setTimeout(() => { rolling = false; renderGacha(); }, 900); // дать анимации доиграть
+}
+
+document.getElementById("collBtn").addEventListener("click", () => {
+  if (rolling) return;
+  gachaGirl = null; gachaLog.textContent = "";
+  renderGacha(); gachaOverlay.classList.add("show");
+});
+gachaBody.addEventListener("click", e => {
+  if (rolling) return;
+  const t = e.target.closest(".girl");
+  if (!t) return;
+  gachaGirl = +t.dataset.g; gachaLog.textContent = "";
+  renderGacha();
+});
+gachaBack.addEventListener("click", () => {
+  if (rolling) return;
+  if (gachaGirl !== null) { gachaGirl = null; gachaLog.textContent = ""; renderGacha(); }
+  else gachaOverlay.classList.remove("show");
+});
+gachaRoll.addEventListener("click", () => {
+  if (rolling || gachaGirl !== null || S.harda < rollCost()) return;
+  S.harda -= rollCost();
+  rolling = true;
+  gachaLog.textContent = "";
+  renderGacha(); // перерисовать с задизейбленной кнопкой и чистыми подсветками
+  update(); save();
+  // исход решается до анимации, рулетки — презентация (принцип feel.md №1)
+  const g = Math.floor(Math.random() * 9), c = Math.floor(Math.random() * 9);
+  const tiles = [...gachaBody.querySelectorAll(".girl")];
+  roulette(tiles, g, 3, tile => {
+    sThud(); vibrate([30, 30, 60]);
+    tile.classList.add("winflash"); // импакт: выигранная девочка мигает
+    setTimeout(() => {
+      gachaGirl = g;
+      renderGacha();
+      const cards = [...gachaBody.querySelectorAll(".gcard")].slice(0, 9); // без платины
+      roulette(cards, c, 2, cell => revealCard(g, c, cell));
+    }, 850);
+  });
+});
+
+/* ═══════════ сброс ═══════════ */
+document.getElementById("resetLink").addEventListener("click", e => {
+  e.preventDefault();
+  if (confirm("Сбросить весь прогресс прототипа?")) {
+    localStorage.removeItem("gamblecore_proto");
+    S = DEFAULTS();
+    update(); save();
+  }
+});
+
+/* ═══════════ отрисовка ═══════════ */
+function update() {
+  const secLeft = Math.max(0, Math.ceil((REGEN_MS - (Date.now() - S.lastRegen)) / 1000));
+  document.getElementById("spinsFill").style.width = (S.spins / SPINS_MAX * 100) + "%";
+  document.getElementById("spinsVal").innerHTML =
+    `${S.spins}/${SPINS_MAX}` + (S.spins < SPINS_MAX ? ` <small>+1 через ${secLeft}с</small>` : "");
+
+  const cost = upgCost();
+  document.getElementById("hardaFill").style.width =
+    (S.upgCount >= UPG_MAX ? 100 : Math.min(100, S.harda / cost * 100)) + "%";
+  document.getElementById("hardaVal").textContent = fmt(S.harda);
+
+  document.getElementById("expFill").style.width = Math.min(100, S.exp / goal() * 100) + "%";
+  document.getElementById("expVal").textContent = `${fmt(S.exp)}/${fmt(goal())}`;
+
+  const rb = document.getElementById("rebirthBtn");
+  rb.classList.toggle("ready", S.exp >= goal());
+  document.getElementById("rebirthFill").style.width = Math.min(100, S.exp / goal() * 100) + "%";
+  document.getElementById("rebirthTxt").textContent =
+    S.exp >= goal()
+      ? `♻️ ПЕРЕРОЖДЕНИЕ ГОТОВО → x${2 ** S.level}`
+      : `перерождение · уровень ${S.level} · множитель x${global()}`;
+
+  autoBtn.textContent = "автоспин: " + (S.auto ? "вкл" : "выкл") + " · 🐢 медленный";
+  autoBtn.classList.toggle("on", S.auto);
+
+  document.getElementById("upgState").textContent =
+    `Куплено: ${S.upgCount}/${UPG_MAX} · харда x${S.hardaMult} · экспа x${S.expMult} · спины x${S.spinsMult}`;
+  const buy = document.getElementById("upgBuy");
+  if (S.upgCount >= UPG_MAX) { buy.textContent = "максимум в этом ране"; buy.disabled = true; }
+  else { buy.textContent = `крутануть — ${fmt(upgCost())} 🪙`; buy.disabled = S.harda < upgCost(); }
+
+  knob.classList.toggle("off", S.spins < 1);
+  document.getElementById("stSpins").textContent = S.totalSpins;
+  document.getElementById("stWon").textContent = fmt(S.totalWon);
+}
+
+regen(); update();
+if (tg) {                                  // Telegram Mini App: на весь экран, свайп-вниз не закрывает (мешал бы рычагу)
+  tg.ready(); tg.expand();
+  tg.disableVerticalSwipes && tg.disableVerticalSwipes();
+}
+document.addEventListener("visibilitychange", () => { if (document.hidden) save(); });
+</script>
+</body>
+</html>
