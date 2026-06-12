@@ -1543,9 +1543,10 @@ function update() {
   }
 
   knob.classList.toggle("off", S.spins < 1);
-  // мигание «хватает на прокачку»
+  // мигание «хватает на прокачку» / «хватает на ролл гачи»
   document.getElementById("upgBtn").classList.toggle("blink",
     S.upgCount < UPG_MAX && S.harda >= cost);
+  document.getElementById("collBtn").classList.toggle("blink", S.harda >= rollCost());
   // гача открыта на галерее — обновить кнопки роллов (харда капает и автоспином)
   if (gachaOverlay.classList.contains("show") && !rolling && gachaGirl === null && !gachaSummary)
     renderGacha();
