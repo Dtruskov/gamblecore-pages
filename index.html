@@ -40,7 +40,10 @@
   #bubble {
     font-size: 10.5px; line-height: 1.25; text-align: center; color: #b9bac2;
     background: #24262c; border-radius: 8px; padding: 4px 6px; width: 100%;
-    min-height: 32px; display: flex; align-items: center; justify-content: center;
+    /* высота ФИКСИРОВАНА (3 строки): длинная фраза не растит header —
+       иначе вся вёрстка съезжает вниз при смене реплики (баг 2026-06-12) */
+    height: 48px; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
   }
   #bars { flex: 1; display: flex; flex-direction: column; gap: 7px; }
   .bar {
@@ -511,8 +514,9 @@ const PHRASES = {
   win:     ["Неплохо!", "Вот это да!", "Так держать!", "Ещё! Ещё!"],
   bigwin:  ["БИГ ВИН!!! 🎉", "ЭТО ЖИРНО!!!", "ВОТ ЭТО Я ПОНИМАЮ!!!"],
   lose:    ["Не сдавайся!", "Полоса неудач вот-вот кончится", "Я в тебя верю 🥺", "Это автомат разогревается"],
-  low:     ["Спины кончаются... отдохни (или купи 😏)", "Энергия на нуле, передохни"],
-  rebirth: ["ПЕРЕРОЖДЕНИЕ! Рейты удвоены НАВСЕГДА!"],
+  // фразы не длиннее 3 строк пузыря (~36 знаков, без слов шире 12 знаков)
+  low:     ["Спины кончились... купи ещё 😏", "Энергия на нуле, передохни"],
+  rebirth: ["Переродился! Рейты ×2 навсегда!"],
 };
 let sayTimer = null;
 function say(kind, face) {
