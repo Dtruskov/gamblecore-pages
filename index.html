@@ -293,6 +293,10 @@
      фикс-высота, скроллится только тело — окно не «прыгает» при переключении */
   #gachaOverlay .sheet { height: min(86vh, 600px); overflow: hidden; }
   #gachaBody { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
+  /* кнопки гачи (РОЛЛ/мульти/🎬/закрыть) — фикс-высота, не растягиваются по числу
+     видимых: «закрыть» одинаков на крутках/замке/карточках (.btn по умолчанию flex:1
+     в колонке тянулся бы по-разному). v13.1 */
+  #gachaOverlay .btn { flex: 0 0 auto; }
 
   /* ── гача: навигация по страницам (стрелки + номер) ── */
   .gnav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
@@ -701,7 +705,7 @@ const girl = gi => {
 /* ═══════════ состояние ═══════════ */
 const SAVE_V = 17;
 // версия билда — мелким текстом в футере (см. разметку футера)
-const BUILD = "v13.1 · 2026-06-14";
+const BUILD = "v13.2 · 2026-06-14";
 // джекпот — символ 🎰 на барабанах: независимый ролл на каждый спин. ~0.015 →
 // 1 из ~67 спинов ≈ 3 мин ручной игры (быстрее на турбо = больше рекламы). balance.md §8
 const JACKPOT_P = 0.015;
@@ -1493,7 +1497,9 @@ function renderGacha() {
     const lockPage = inProg + 1;
     if (gachaPage > lockPage) gachaPage = lockPage;
     if (gachaPage < 0) gachaPage = 0;
-    gachaTitle.textContent = "Гача 💖";
+    // в заголовке — суммарный вечный бонус всех платин к экспе (5% за девочку)
+    const platPct = Math.round((platMult() - 1) * 100);
+    gachaTitle.textContent = `Гача 💖 · +${platPct}% к экспе навсегда`;
     const navLeft = gachaPage > 0, navRight = gachaPage < lockPage;
     // страница-замок: следующая за текущей, ещё не открыта
     if (gachaPage === lockPage) {
