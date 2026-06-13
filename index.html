@@ -174,6 +174,10 @@
   #rebirthBtn.ready #rebirthFill { background: #9fd64e; }
   #rebirthBtn.ready #rebirthTxt { color: #1c2208; }
   @keyframes glow { 50% { box-shadow: 0 0 14px #9fd64e; } }
+  /* кнопка прокачки = прогресс-бар покупок 0..5 (заливка как у перерождения) */
+  #upgBtn { position: relative; overflow: hidden; padding: 0; height: 44px; }
+  #upgFill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: #e8556d; transition: width .35s ease; }
+  #upgBtnTxt { position: relative; z-index: 1; line-height: 44px; }
   #autoBtn.on { background: #4db8e8; color: #082230; }
 
   footer {
@@ -396,7 +400,9 @@
   <div id="meta">
     <div id="metaRow">
       <button class="btn" disabled>🔒 магазин</button>
-      <button class="btn accent" id="upgBtn">прокачка</button>
+      <button class="btn" id="upgBtn">
+        <div id="upgFill"></div><div id="upgBtnTxt">прокачка</div>
+      </button>
       <button class="btn" id="collBtn">гача 💖</button>
     </div>
     <button class="btn" id="rebirthBtn">
@@ -424,12 +430,10 @@
 <div class="overlay" id="upgOverlay">
   <div class="sheet">
     <h2>Прокачка ⬆️</h2>
-    <p><b>5 вложений за ран</b>, каждое следующее дороже. Что усилить на <b>+50%</b> — решаешь ты.</p>
+    <p><b>5 вложений за ран</b>, каждое следующее дороже. Каждое — <b>+50%</b> к выплате харды.</p>
     <p class="big" id="upgWallet">—</p>
     <p class="big" id="upgState">—</p>
     <button class="btn accent" id="upgHarda">—</button>
-    <button class="btn accent" id="upgExp">—</button>
-    <button class="btn accent" id="upgSpins">—</button>
     <p id="upgLog" style="min-height:18px"></p>
     <button class="btn" id="upgClose">закрыть</button>
   </div>
@@ -500,13 +504,13 @@ const GIRLS = [
 ];
 
 /* ═══════════ состояние ═══════════ */
-const SAVE_V = 13;
+const SAVE_V = 14;
 // версия билда — мелким текстом в футере (см. разметку футера)
-const BUILD = "v9 · 2026-06-13";
+const BUILD = "v10 · 2026-06-13";
 // DEFAULTS — фабрика: cards/plat — массивы, общие ссылки между ранами недопустимы
 const DEFAULTS = () => ({
   v: SAVE_V, spins: SPINS_MAX, harda: 0, exp: 0, level: 1,
-  upgCount: 0, hardaMult: 1, expMult: 1, spinsMult: 1,
+  upgCount: 0, hardaMult: 1,
   lastRegen: Date.now(), totalSpins: 0, totalWon: 0, auto: false,
   cards: GIRLS.map(() => Array(9).fill(0)), plat: GIRLS.map(() => false),
   tutDone: false,
@@ -580,10 +584,10 @@ function cloudInit(done) {
 }
 
 const global = () => 2 ** (S.level - 1);
-// платина: +50% к ЭКСПЕ за каждую девочку, АДДИТИВНО (1+0.5n, полная коллекция ×5.5),
-// переживает перерождение. Харду НЕ множит — иначе снежный ком: больше платин →
-// больше харды → больше роллов → больше платин (balance.md §4a, решение 2026-06-13)
-const platMult = () => 1 + 0.5 * S.plat.filter(Boolean).length;
+// платина: +5% к ЭКСПЕ за каждую девочку, АДДИТИВНО (1+0.05n, полная коллекция +45%),
+// бьёт по тройке экспы И пассивной экспе за крутку; переживает перерождение.
+// Харду НЕ множит — иначе снежный ком (balance.md §4a, решение 2026-06-13)
+const platMult = () => 1 + 0.05 * S.plat.filter(Boolean).length;
 // без оператора ?? — он требует Chrome 80+ и валит парсинг скрипта на старых
 // webview (игра не открывалась на части устройств), всё дальше тоже мёртвое
 const goal = () => { const g = GOALS[S.level - 1]; return g != null ? g : GOALS[GOALS.length - 1] * 2.5 ** (S.level - GOALS.length); };
@@ -861,7 +865,7 @@ async function doSpin(durMul, handY) {
   // прогрев был, а тройки нет — «вздох» третьего барабана вместо тишины
   if (heatSym && targets[2] !== heatSym) nearMiss();
   // пассивная экспа: бар перерождения ползёт каждый спин (balance.md §4)
-  S.exp += Math.round(EXP_PASSIVE * global() * S.expMult * platMult());
+  S.exp += Math.round(EXP_PASSIVE * global() * platMult());
   spinning = false;
   update(); save();
   if (TUT.active) tutOnSpinEnd();
@@ -898,7 +902,7 @@ function evaluate() {
     for (let i = 0; i < 4; i++) sCoin(i);
     if (Math.random() < .4) say("win", "😸");
   } else if (sym.id === "exp") {
-    const amt = Math.round(sym.pay * g * S.expMult * platMult());
+    const amt = Math.round(sym.pay * g * platMult());
     S.exp += amt;
     winCount("🔥 BIG WIN +", amt, " экспы");
     goldFlash();
@@ -906,8 +910,8 @@ function evaluate() {
     emojiBurst("🧿", 22, true);
     bigCelebrate(); say("bigwin", "🤩");
   } else if (sym.id === "spins") {
-    // база 10, шаг множителя 0.5 → выплата всегда целая (10/15/20/...)
-    const pay = Math.round(sym.pay * S.spinsMult);
+    // фикс +10 (прокачка спинов убрана 2026-06-13 — прокачка только харду)
+    const pay = sym.pay;
     const credited = Math.min(pay, SPINS_MAX - S.spins); // кап жёсткий, излишек сгорает
     S.spins += credited;
     if (credited > 0) winCount("🔥 BIG WIN +", credited, " спинов");
@@ -1063,26 +1067,19 @@ document.getElementById("upgClose").addEventListener("click", () => {
   upgOverlay.classList.remove("show");
   if (TUT.step === "upgClose") tutGoto("swipe2");
 });
-function doUpg(which) {
+// прокачка усиливает ТОЛЬКО харду (+50% за покупку); экспа/спины убраны
+// из прокачки (решение 2026-06-13, balance.md §3)
+function doUpg() {
   const cost = upgCost();
   if (S.upgCount >= UPG_MAX || S.harda < cost) return;
-  S.harda -= cost; S.upgCount++;
-  let label;
-  if (which === "harda")    { S.hardaMult += .5; label = "ХАРДЕ! Теперь x" + S.hardaMult; }
-  else if (which === "exp") { S.expMult   += .5; label = "ЭКСПЕ! Теперь x" + S.expMult; }
-  else { S.spinsMult += .5; label = "СПИНАМ! Тройка даёт +" + Math.round(10 * S.spinsMult); }
-  document.getElementById("upgLog").textContent = "+50% к " + label;
+  S.harda -= cost; S.upgCount++; S.hardaMult += .5;
+  document.getElementById("upgLog").textContent = "+50% к ХАРДЕ! Теперь x" + S.hardaMult;
   sCoin(0); sCoin(2); vibrate(30);
-  // VFX покупки: бёрст эмодзи прокачанного ресурса из кнопки
-  const btnId = which === "harda" ? "upgHarda" : which === "exp" ? "upgExp" : "upgSpins";
-  const em = which === "harda" ? "🪙" : which === "exp" ? "🧿" : "🎲";
-  emojiBurst(em, 10, false, document.getElementById(btnId));
+  emojiBurst("🪙", 10, false, document.getElementById("upgHarda")); // VFX покупки
   update(); save();
   if (TUT.step === "upgBuy") tutGoto("upgClose");
 }
-document.getElementById("upgHarda").addEventListener("click", () => doUpg("harda"));
-document.getElementById("upgExp").addEventListener("click", () => doUpg("exp"));
-document.getElementById("upgSpins").addEventListener("click", () => doUpg("spins"));
+document.getElementById("upgHarda").addEventListener("click", doUpg);
 
 /* ═══════════ перерождение ═══════════ */
 const rbOverlay = document.getElementById("rbOverlay");
@@ -1105,7 +1102,7 @@ document.getElementById("rbGo").addEventListener("click", () => {
   if (S.exp < goal()) return;
   const tiers = overTiers(); // считаем ДО сброса экспы и повышения уровня
   S.level++; S.exp = 0;
-  S.upgCount = 0; S.hardaMult = 1; S.expMult = 1; S.spinsMult = 1;
+  S.upgCount = 0; S.hardaMult = 1;
   S.spins = SPINS_MAX;
   // перезрел → стартовая харда: тир × цена ролла УЖЕ нового уровня (balance.md §4)
   S.harda = tiers * rollCost();
@@ -1120,7 +1117,7 @@ document.getElementById("rbGo").addEventListener("click", () => {
 /* ═══════════ гача-коллекция ═══════════ */
 // ролл без выбора (решение 2026-06-12 v2): рулетка сначала выбирает девочку (1/9),
 // потом её карточку (1/9) — равномерно 1/81. Дубль — эффект DOUBLE и утешительные
-// спины (кап жёсткий), не харда. Полный сет → платиновая: +50% к экспе НАВСЕГДА
+// спины (кап жёсткий), не харда. Полный сет → платиновая: +5% к экспе НАВСЕГДА
 // (аддитивно, переживает перерождение; харду НЕ трогает). balance.md §4a
 const rollCost = () => Math.round(GACHA_COST * GACHA_RATIO ** (S.level - 1));
 const DUPE_SPINS = 10;
@@ -1172,8 +1169,8 @@ function renderGacha() {
         : `<div class="gcard no"><div class="ce">❓</div>изобр. ${c + 1}</div>`;
     }
     html += S.plat[i]
-      ? `<div class="gcard gplat"><div class="ce">${PLAT_EMOJI[i]}</div>ПЛАТИНОВАЯ КАРТОЧКА · ВИДЕО · экспа +50% навсегда</div>`
-      : `<div class="gcard gplat no"><div class="ce">🔒</div>собери все 9 — платиновая карточка: экспа +50% навсегда</div>`;
+      ? `<div class="gcard gplat"><div class="ce">${PLAT_EMOJI[i]}</div>ПЛАТИНОВАЯ КАРТОЧКА · ВИДЕО · экспа +5% навсегда</div>`
+      : `<div class="gcard gplat no"><div class="ce">🔒</div>собери все 9 — платиновая карточка: экспа +5% навсегда</div>`;
     gachaBody.innerHTML = html + `</div>`;
     gachaRoll.style.display = "none";
     gachaMulti.style.display = "none";
@@ -1193,7 +1190,7 @@ function renderGachaSummary() {
   });
   if (!html) html = `<div class="sumrow">новых карточек нет 😿 сплошные дубли</div>`;
   s.plats.forEach(g =>
-    html += `<div class="sumrow plat">⭐ ПЛАТИНА: ${GIRLS[g].name}! Экспа +50% навсегда</div>`);
+    html += `<div class="sumrow plat">⭐ ПЛАТИНА: ${GIRLS[g].name}! Экспа +5% навсегда</div>`);
   html += `<div class="sumrow">💥 Дубли: ${s.dupes}` +
     (s.dupes ? ` → обменяны на <b>+${s.spinsGained} 🎲 спинов</b>` +
       (s.spinsBurned ? ` <small>(${s.spinsBurned} сгорело — бак был полон)</small>` : "")
@@ -1259,7 +1256,7 @@ function revealCard(g, c, cell) {
     vibrate(30);
     if (S.cards[g].every(n => n > 0)) {
       S.plat[g] = true;
-      gachaLog.textContent = `⭐ ПЛАТИНОВАЯ КАРТОЧКА: ${GIRLS[g].name}! Экспа +50% навсегда!`;
+      gachaLog.textContent = `⭐ ПЛАТИНОВАЯ КАРТОЧКА: ${GIRLS[g].name}! Экспа +5% навсегда!`;
       bigCelebrate(); emojiBurst("⭐", 24, true);
     } else {
       gachaLog.textContent = `🎉 НОВАЯ: «изобр. ${c + 1}» ${cardEmoji(g, c)}`;
@@ -1461,7 +1458,7 @@ function tutRender() {
       TUT.force = null;
       // тутор продаёт ЗАЧЕМ, не только КУДА (плейтест: «тутор на гачу не понял»)
       tutShow(document.getElementById("collBtn"),
-        "Хватает на ролл гачи! Собери 9 карточек девочки — её платина даст +50% к экспе НАВСЕГДА",
+        "Хватает на ролл гачи! Собери 9 карточек девочки — её платина даст +5% к экспе НАВСЕГДА",
         { paw: true });
       break;
     case "gachaRoll":
@@ -1470,7 +1467,7 @@ function tutRender() {
       break;
     case "gachaClose":
       tutShow(gachaBack,
-        "Карточка твоя — первая из 9! Полный сет = платина +50% к экспе навсегда. Возвращайся к слоту");
+        "Карточка твоя — первая из 9! Полный сет = платина +5% к экспе навсегда. Возвращайся к слоту");
       break;
     case "swipe3":
       TUT.force = "spins";
@@ -1580,25 +1577,25 @@ function update() {
   autoBtn.textContent = "автоспин: " + (S.auto ? "вкл" : "выкл") + " · 🐢 ×2 медленнее руки";
   autoBtn.classList.toggle("on", S.auto);
 
-  // окно прокачки: ОДНА цена на «вложение», кнопки — только выбор куда
-  // (три ценника читались как независимые треки — balance.md §3, плейтест 2026-06-13)
+  // окно прокачки: только харда (экспа/спины убраны — balance.md §3, 2026-06-13)
   document.getElementById("upgWallet").textContent = `у тебя: 🪙 ${fmt(S.harda)}`;
-  const bH = document.getElementById("upgHarda"), bE = document.getElementById("upgExp"), bS = document.getElementById("upgSpins");
+  const bH = document.getElementById("upgHarda");
   if (S.upgCount >= UPG_MAX) {
     document.getElementById("upgState").textContent =
       `вложений больше нет (${UPG_MAX}/${UPG_MAX}) — выжимай ран и перерождайся ♻️`;
     bH.textContent = `🪙 харда x${S.hardaMult} · макс`;
-    bE.textContent = `🧿 экспа x${S.expMult} · макс`;
-    bS.textContent = `🎲 спины +${Math.round(10 * S.spinsMult)} · макс`;
-    bH.disabled = bE.disabled = bS.disabled = true;
+    bH.disabled = true;
   } else {
     document.getElementById("upgState").textContent =
       `вложение ${S.upgCount + 1}/${UPG_MAX} · цена 🪙 ${fmt(cost)}`;
-    bH.textContent = `🪙 харда  x${S.hardaMult} → x${S.hardaMult + .5}`;
-    bE.textContent = `🧿 экспа  x${S.expMult} → x${S.expMult + .5}`;
-    bS.textContent = `🎲 спины  +${Math.round(10 * S.spinsMult)} → +${Math.round(10 * (S.spinsMult + .5))}`;
-    bH.disabled = bE.disabled = bS.disabled = S.harda < cost;
+    bH.textContent = `🪙 +50% к харде:  x${S.hardaMult} → x${S.hardaMult + .5}`;
+    bH.disabled = S.harda < cost;
   }
+  // прогресс-бар прокачки в меню: фон кнопки заполняется по мере покупок 0..5
+  const upgPct = S.upgCount / UPG_MAX * 100;
+  document.getElementById("upgFill").style.width = upgPct + "%";
+  document.getElementById("upgBtnTxt").textContent =
+    S.upgCount >= UPG_MAX ? "прокачка 5/5 ✓" : `прокачка ${S.upgCount}/${UPG_MAX}`;
 
   knob.classList.toggle("off", S.spins < 1);
   // мигание «хватает на прокачку» / «хватает на ролл гачи»
