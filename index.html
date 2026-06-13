@@ -298,8 +298,15 @@
   .gachaLock { text-align: center; padding: 36px 12px; color: #8a8c96; font-size: 13px; line-height: 1.5; }
   .gachaLock .lockico { font-size: 64px; margin-bottom: 12px; opacity: .8; }
   /* итог мульти-ролла: горизонтальная авто-прокрутка карточек (~3 видно, медленный скролл) */
-  .galwrap { overflow: hidden; border-radius: 12px; background: #2a2c33; padding: 10px 0; margin-bottom: 10px; }
-  .galstrip { display: flex; gap: 8px; padding: 0 8px; width: max-content; will-change: transform; }
+  /* свайп влево-вправо: нативный горизонтальный скролл + drag мышью (десктоп) */
+  .galwrap {
+    overflow-x: auto; overflow-y: hidden; touch-action: pan-x;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    border-radius: 12px; background: #2a2c33; padding: 10px 0; margin-bottom: 10px; cursor: grab;
+  }
+  .galwrap::-webkit-scrollbar { display: none; }
+  .galwrap.grabbing { cursor: grabbing; }
+  .galstrip { display: flex; gap: 8px; padding: 0 8px; width: max-content; }
   .galcard {
     flex: none; width: 92px; background: #2f3137; border-radius: 10px; padding: 10px 4px;
     text-align: center; font-size: 10px; color: #b9bac2; display: flex; flex-direction: column; gap: 2px;
@@ -1423,7 +1430,7 @@ function gnavHtml(page, left, right) {
 }
 
 function renderGacha() {
-  if (galRAF && !gachaSummary) { cancelAnimationFrame(galRAF); galRAF = null; } // стоп авто-скролл вне итогов
+  if (galRAF && !gachaSummary) stopGalleryScroll(); // стоп авто-скролл вне итогов
   if (gachaSummary) { renderGachaSummary(); return; }
   if (gachaGirl === null) {
     const inProg = inProgressPage();
@@ -1493,7 +1500,7 @@ function renderGacha() {
 // итоговое окно мульти-ролла: открытые карточки — горизонтальной авто-прокручиваемой
 // галереей (~3 видно, медленный скролл влево-вправо — все картинки можно рассмотреть);
 // плюс платины и обмен дублей на спины. balance.md §4a, feel.md §8a
-let galRAF = null;
+let galRAF = null, galPaused = false, galResumeTimer = null;
 function renderGachaSummary() {
   const s = gachaSummary;
   gachaTitle.textContent = `Итоги — ${s.rolls} роллов 💖`;
@@ -1521,25 +1528,62 @@ function renderGachaSummary() {
   gachaBack.textContent = "ок";
   if (s.newCards.length) startGalleryScroll();
 }
-// медленный пинг-понг-скролл ленты карточек: справа-налево и обратно, чтобы все
-// картинки можно было рассмотреть (если всё влезло — скролл не нужен)
-function startGalleryScroll() {
+function stopGalleryScroll() {
   if (galRAF) { cancelAnimationFrame(galRAF); galRAF = null; }
+  clearTimeout(galResumeTimer); galResumeTimer = null;
+  galPaused = false;
+}
+// медленный пинг-понг авто-скролл (через scrollLeft), чтобы все картинки можно было
+// рассмотреть; в любой момент можно схватить и листать свайпом — авто уступает руке
+// и возобновляется через ~2.5с простоя. Если всё влезло — авто не нужен, свайп есть
+function startGalleryScroll() {
+  stopGalleryScroll();
   requestAnimationFrame(() => {
+    const wrap = document.querySelector(".galwrap");
     const strip = document.getElementById("galStrip");
-    if (!strip) return;
-    const max = strip.scrollWidth - strip.parentElement.clientWidth;
-    if (max <= 0) return;
-    let x = 0, dir = -1, last = performance.now();
+    if (!wrap || !strip) return;
+    setupGalleryDrag(wrap);
+    if (strip.scrollWidth - wrap.clientWidth <= 0) return; // всё влезло — только свайп
+    let dir = 1, last = performance.now(), pos = wrap.scrollLeft;
     const SPEED = 42; // px/сек — медленно
     (function f(now) {
       const dt = Math.min(50, now - last) / 1000; last = now;
-      x += dir * SPEED * dt;
-      if (x <= -max) { x = -max; dir = 1; } else if (x >= 0) { x = 0; dir = -1; }
-      strip.style.transform = `translateX(${x}px)`;
+      const max = strip.scrollWidth - wrap.clientWidth;
+      if (galPaused) {
+        pos = wrap.scrollLeft;           // следуем за ручным свайпом, чтобы авто продолжил с него
+      } else {
+        pos += dir * SPEED * dt;
+        if (pos >= max) { pos = max; dir = -1; } else if (pos <= 0) { pos = 0; dir = 1; }
+        wrap.scrollLeft = pos;
+      }
       galRAF = requestAnimationFrame(f);
     })(last);
   });
+}
+// тач — нативный скролл (пауза авто на время касания); мышь — ручной drag
+function setupGalleryDrag(wrap) {
+  const pause = () => { galPaused = true; clearTimeout(galResumeTimer); };
+  const resumeLater = () => {
+    clearTimeout(galResumeTimer);
+    galResumeTimer = setTimeout(() => { galPaused = false; }, 2500);
+  };
+  wrap.addEventListener("touchstart", pause, { passive: true });
+  wrap.addEventListener("touchend", resumeLater, { passive: true });
+  wrap.addEventListener("touchcancel", resumeLater, { passive: true });
+  let drag = null;
+  wrap.addEventListener("pointerdown", e => {
+    if (e.pointerType !== "mouse") return; // тач уже листается нативно
+    drag = { x: e.clientX, left: wrap.scrollLeft };
+    wrap.classList.add("grabbing");
+    wrap.setPointerCapture(e.pointerId);
+    pause();
+  });
+  wrap.addEventListener("pointermove", e => {
+    if (drag) wrap.scrollLeft = drag.left - (e.clientX - drag.x);
+  });
+  const end = () => { if (drag) { drag = null; wrap.classList.remove("grabbing"); resumeLater(); } };
+  wrap.addEventListener("pointerup", end);
+  wrap.addEventListener("pointercancel", end);
 }
 
 // рулетка: рамка цвета прогрева бежит по элементам слева-направо сверху-вниз,
@@ -1636,7 +1680,7 @@ gachaBack.addEventListener("click", () => {
     gachaGirl = null; gachaLog.textContent = ""; renderGacha();
     if (TUT.step === "gachaClose") tutGoto("gachaClose"); // переметить кнопку («закрыть»)
   } else {
-    if (galRAF) { cancelAnimationFrame(galRAF); galRAF = null; }
+    stopGalleryScroll();
     gachaOverlay.classList.remove("show");
     if (TUT.step === "gachaClose") tutGoto("swipe3");
   }
