@@ -235,6 +235,10 @@
   .sheet p { font-size: 13px; color: #b9bac2; line-height: 1.45; }
   .sheet .big { font-size: 15px; color: #e8e8ea; font-weight: 700; }
 
+  /* слой VFX ПОД окнами (z-index 9 < overlay 10): эффекты выигрышных круток слота
+     рендерятся сюда — над игрой, но под любыми модалками (v13). Гача/джекпот-эффекты
+     по-прежнему идут в body (поверх своих окон) */
+  #fxUnder { position: fixed; inset: 0; pointer-events: none; z-index: 9; }
   .confetti {
     position: fixed; width: 10px; height: 10px; top: 30%; left: 50%; z-index: 105;
     pointer-events: none; animation: conf 1.1s ease-out forwards;
@@ -284,6 +288,11 @@
     background: linear-gradient(135deg, #3a3322, #4a3d1f);
     box-shadow: 0 0 12px rgba(255,211,77,.55); color: #ffd34d; font-weight: 700;
   }
+
+  /* гача-окно одинакового размера на всех вкладках (крутки / замок / карточки), v13:
+     фикс-высота, скроллится только тело — окно не «прыгает» при переключении */
+  #gachaOverlay .sheet { height: min(86vh, 600px); overflow: hidden; }
+  #gachaBody { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
 
   /* ── гача: навигация по страницам (стрелки + номер) ── */
   .gnav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
@@ -436,6 +445,8 @@
   }
   .jpclaim:active { transform: scale(.97); }
   @keyframes jpclaimpulse { from { transform: scale(1); } to { transform: scale(1.05); } }
+  /* первые 0.75с окно не реагирует на тапы (меньше ложных срабатываний) — кнопка приглушена */
+  .jpclaim.locked { opacity: .45; }
   .jpclose {
     border: none; background: none; cursor: pointer; font-family: inherit;
     color: #caa94e; font-size: 12px; padding: 4px; text-decoration: underline;
@@ -553,6 +564,9 @@
   </div>
   <!-- ═══ /DEV-ПАНЕЛЬ ═══ -->
 </div>
+
+<!-- слой эффектов под окнами (см. CSS #fxUnder) — вне #app, чтобы shake-трансформ не ломал fixed-координаты -->
+<div id="fxUnder"></div>
 
 <div class="overlay" id="upgOverlay">
   <div class="sheet">
@@ -687,12 +701,15 @@ const girl = gi => {
 /* ═══════════ состояние ═══════════ */
 const SAVE_V = 17;
 // версия билда — мелким текстом в футере (см. разметку футера)
-const BUILD = "v13 · 2026-06-14";
+const BUILD = "v13.1 · 2026-06-14";
 // джекпот — символ 🎰 на барабанах: независимый ролл на каждый спин. ~0.015 →
 // 1 из ~67 спинов ≈ 3 мин ручной игры (быстрее на турбо = больше рекламы). balance.md §8
 const JACKPOT_P = 0.015;
 // окно джекпота живёт 5с (виден убывающий таймер-бар, v13) — потом само закрывается
 const JACKPOT_MS = 5000;
+// первые 0.75с окно не реагирует на тапы (ни забрать, ни закрыть) — меньше ложных
+// срабатываний (палец ещё на экране после спина) — v13
+const JP_ARM_MS = 750;
 // DEFAULTS — фабрика: cards/plat — массивы, общие ссылки между ранами недопустимы
 const DEFAULTS = () => ({
   v: SAVE_V, spins: SPINS_MAX, harda: 0, exp: 0, level: 1,
@@ -967,10 +984,13 @@ function goldFlash() {
   const sb = document.getElementById("slotbox");
   sb.classList.remove("goldflash"); void sb.offsetWidth; sb.classList.add("goldflash");
 }
-function vignette() {
+// under=true → эффект уходит в слой #fxUnder (под окнами): для выигрышей слота,
+// чтобы при открытой модалке джус не лез поверх неё (v13). Гача/джекпот — без under
+const fxRoot = under => under ? document.getElementById("fxUnder") : document.body;
+function vignette(under) {
   const v = document.createElement("div");
   v.className = "vignette";
-  document.body.appendChild(v);
+  fxRoot(under).appendChild(v);
   setTimeout(() => v.remove(), 1100);
 }
 // промах после прогрева: томление обязано получить развязку, даже отрицательную —
@@ -1000,25 +1020,27 @@ function floatAt(el, txt, color) {
   document.body.appendChild(f);
   setTimeout(() => f.remove(), 1300);
 }
-function confetti() {
+function confetti(under) {
+  const root = fxRoot(under);
   for (let i = 0; i < 26; i++) {
     const d = document.createElement("div");
     d.className = "confetti";
     d.style.background = `hsl(${Math.random() * 360},90%,60%)`;
     d.style.setProperty("--dx", (Math.random() * 360 - 180) + "px");
     d.style.setProperty("--dy", (Math.random() * 300 - 60) + "px");
-    document.body.appendChild(d);
+    root.appendChild(d);
     setTimeout(() => d.remove(), 1200);
   }
 }
 // разлетающиеся эмодзи выигранного ресурса + блёстки + золотое кольцо;
 // по умолчанию из центра слота, fromEl — из любого элемента (VFX кнопок)
-function emojiBurst(emoji, n, big, fromEl) {
+function emojiBurst(emoji, n, big, fromEl, under) {
+  const root = fxRoot(under);
   const box = (fromEl || document.getElementById("slotbox")).getBoundingClientRect();
   const cx = box.left + box.width / 2, cy = box.top + box.height / 2;
   const ring = document.createElement("div");
   ring.className = "ring"; ring.style.left = cx + "px"; ring.style.top = cy + "px";
-  document.body.appendChild(ring);
+  root.appendChild(ring);
   setTimeout(() => ring.remove(), 700);
   const pool = big ? [emoji, emoji, "✨", "⭐", "💫"] : [emoji, emoji, emoji, "✨"];
   for (let i = 0; i < n; i++) {
@@ -1033,10 +1055,13 @@ function emojiBurst(emoji, n, big, fromEl) {
     d.style.setProperty("--rot", (Math.random() * 720 - 360) + "deg");
     d.style.setProperty("--sc", (.5 + Math.random() * .9).toFixed(2));
     d.style.animationDelay = (Math.random() * .12) + "s";
-    document.body.appendChild(d);
+    root.appendChild(d);
     setTimeout(() => d.remove(), 1600);
   }
 }
+
+// открыто ли какое-либо модальное окно (гача/магазин/прокачка/перерождение/спины/джекпот)
+const overlayOpen = () => !!document.querySelector(".overlay.show");
 
 async function doSpin(durMul, handY) {
   // джекпот выпал — слот заморожен, пока игрок не разберётся с окном награды
@@ -1064,8 +1089,10 @@ async function doSpin(durMul, handY) {
   const forced = TUT.force ? SYMS.find(s => s.id === TUT.force) : null;
   const targets = reels.map(() => forced || randSym());
   // джекпот 🎰 (v12.2): независимый ролл на спин (не в туториале) → 3×🎰 на линии →
-  // окно рекламы (balance.md §8). Имеет приоритет над wild-полосой, её не тратит
-  const jackpotHit = !forced && !TUT.active && Math.random() < JACKPOT_P;
+  // окно рекламы (balance.md §8). Имеет приоритет над wild-полосой, её не тратит.
+  // v13: НЕ выпадает, если открыто любое окно (автоспин крутит на фоне) — окно
+  // джекпота не должно всплывать поверх гачи/магазина и т.п.
+  const jackpotHit = !forced && !TUT.active && !overlayOpen() && Math.random() < JACKPOT_P;
   if (jackpotHit) {
     targets[0] = targets[1] = targets[2] = JACKPOT;
   } else if (!forced && S.wildStreak > 0) {
@@ -1091,9 +1118,10 @@ async function doSpin(durMul, handY) {
   if (TUT.active) tutOnSpinEnd();
 }
 
-function bigCelebrate() {
-  sFanfare(); confetti(); vibrate([60, 40, 120]);
-  vignette(); // края экрана темнеют на секунду — «мир остановился»
+// under=true (выигрыши слота) → конфетти/виньетка в слой под окнами (v13)
+function bigCelebrate(under) {
+  sFanfare(); confetti(under); vibrate([60, 40, 120]);
+  vignette(under); // края экрана темнеют на секунду — «мир остановился»
   const app = document.getElementById("app");
   app.classList.remove("shake"); void app.offsetWidth; app.classList.add("shake");
 }
@@ -1154,8 +1182,8 @@ function evaluate() {
     floatText("+" + fmt(h) + " 🪙", "#e8556d", -64);
     floatText("+" + fmt(e) + " 🧿", "#9fd64e", 0);
     if (credited > 0) floatText("+" + credited + " 🎲", "#4db8e8", 64);
-    emojiBurst("⚡", 26, true);
-    bigCelebrate(); say("bigwin", "🤩");
+    emojiBurst("⚡", 26, true, null, true);
+    bigCelebrate(true); say("bigwin", "🤩");
     return true;
   }
 
@@ -1166,7 +1194,7 @@ function evaluate() {
     winCount("WIN +", amt, " харды");
     goldFlash();
     floatText("+" + fmt(amt) + " 🪙", "#e8556d", 0);
-    emojiBurst("🪙", 14);
+    emojiBurst("🪙", 14, false, null, true);
     for (let i = 0; i < 4; i++) sCoin(i);
     if (Math.random() < .4) say("win", "😸");
   } else if (sym.id === "exp") {
@@ -1175,8 +1203,8 @@ function evaluate() {
     winCount("🔥 BIG WIN +", amt, " экспы");
     goldFlash();
     floatText("+" + fmt(amt) + " 🧿", "#9fd64e", 0);
-    emojiBurst("🧿", 22, true);
-    bigCelebrate(); say("bigwin", "🤩");
+    emojiBurst("🧿", 22, true, null, true);
+    bigCelebrate(true); say("bigwin", "🤩");
   } else if (sym.id === "spins") {
     // фикс +10 (прокачка спинов убрана 2026-06-13 — прокачка только харду)
     const pay = sym.pay;
@@ -1186,8 +1214,8 @@ function evaluate() {
     else winTxt.textContent = "🎲 спины уже полные!";
     goldFlash();
     if (credited > 0) floatText("+" + credited + " 🎲", "#4db8e8", 0);
-    emojiBurst("🎲", 22, true);
-    bigCelebrate(); say("bigwin", "🤩");
+    emojiBurst("🎲", 22, true, null, true);
+    bigCelebrate(true); say("bigwin", "🤩");
   }
   return true;
 }
@@ -1916,7 +1944,10 @@ document.getElementById("spinsClose").addEventListener("click", () => spinsOverl
 // яркий мигающий фон + дождь монет привлекают внимание. Награда — за просмотр (🎬).
 const jackpotOverlay = document.getElementById("jackpotOverlay");
 const jpDesc = document.getElementById("jpDesc");
+const jpClaimBtn = document.getElementById("jpClaim");
 let jpTimer = null, jpPending = null;
+// jpArmed — окно реагирует на тапы (взводится через JP_ARM_MS); jpArmTimer — его таймер
+let jpArmed = false, jpArmTimer = null;
 function jackpotReward() {
   return {
     harda: Math.round(rollCost() * 5),   // ~5 роллов гачи (масштаб с уровнем)
@@ -1980,18 +2011,24 @@ function showJackpot() {
   jackpotAttention();
   jackpotVFXStart();
   startJpCountdown();
+  // взвод тапов: первые JP_ARM_MS окно не реагирует (кнопка приглушена)
+  jpArmed = false; jpClaimBtn.classList.add("locked");
+  clearTimeout(jpArmTimer);
+  jpArmTimer = setTimeout(() => { jpArmed = true; jpClaimBtn.classList.remove("locked"); }, JP_ARM_MS);
   clearTimeout(jpTimer);
   jpTimer = setTimeout(closeJackpot, JACKPOT_MS); // окно живёт JACKPOT_MS, потом само закрывается
 }
 function closeJackpot() {
-  clearTimeout(jpTimer);
+  if (!jpArmed) return;            // в первые JP_ARM_MS закрытие тапом игнорируется
+  clearTimeout(jpTimer); clearTimeout(jpArmTimer);
   stopJpCountdown();
   jackpotVFXStop();
   jackpotOverlay.classList.remove("show");
   jackpotLanded = false;           // слот снова можно крутить
 }
 function claimJackpot() {           // 🎬 реклама (заглушка) → насыпать награду
-  clearTimeout(jpTimer);
+  if (!jpArmed) return;            // в первые JP_ARM_MS забор тапом игнорируется
+  clearTimeout(jpTimer); clearTimeout(jpArmTimer);
   stopJpCountdown();
   jackpotVFXStop();
   const r = jpPending || jackpotReward();
