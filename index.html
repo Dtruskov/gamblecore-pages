@@ -363,8 +363,8 @@
   /* DOUBLE: явно показываем, что дубль = спины, и сколько их */
   #doubleFx { flex-direction: column; gap: 8px; }
   .dblsub {
-    font-size: 28px; font-weight: 900; color: #4db8e8; letter-spacing: 1px;
-    text-shadow: 0 0 18px #4db8e8, 0 3px 0 #16465c;
+    font-size: 28px; font-weight: 900; color: #9fd64e; letter-spacing: 1px;
+    text-shadow: 0 0 18px #9fd64e, 0 3px 0 #3a5210;
     animation: dblpop 1.4s cubic-bezier(.2,1.4,.4,1) .12s both;
   }
 
@@ -705,7 +705,7 @@ const girl = gi => {
 /* ═══════════ состояние ═══════════ */
 const SAVE_V = 17;
 // версия билда — мелким текстом в футере (см. разметку футера)
-const BUILD = "v13.2 · 2026-06-14";
+const BUILD = "v13.3 · 2026-06-14";
 // джекпот — символ 🎰 на барабанах: независимый ролл на каждый спин. ~0.015 →
 // 1 из ~67 спинов ≈ 3 мин ручной игры (быстрее на турбо = больше рекламы). balance.md §8
 const JACKPOT_P = 0.015;
@@ -1440,7 +1440,11 @@ document.getElementById("rbGo").addEventListener("click", () => {
 // спины (кап жёсткий), не харда. Полный сет → платиновая: +5% к экспе НАВСЕГДА
 // (аддитивно, переживает перерождение; харду НЕ трогает). balance.md §4a
 const rollCost = () => Math.round(GACHA_COST * GACHA_RATIO ** (S.level - 1));
-const DUPE_SPINS = 1;  // v12: 3 → 1 (запрос автора) — balance.md §4a
+// дубль гачи даёт ОПЫТ (v13.3, было +1 спин): скейлится с уровнем перерождения как
+// все exp-источники — DUPE_EXP × global × platMult × tempMult ≈ несколько спинов
+// пассива. У опыта нет капа (спины капались и «сгорали»). balance.md §4a
+const DUPE_EXP = 200;
+const dupeExp = () => Math.round(DUPE_EXP * global() * platMult() * tempMult());
 // эмодзи карточек — детерминированные «рандомные»: внутри девочки не повторяются
 const CARD_EMOJI = ["🌸","🍓","🎀","🍰","💄","🌙","💎","🍷","🧁","🌺","🎶","🍒",
   "💋","🦋","🌊","🔥","🍑","✨","🎧","🍭","🌈","🍾","💌","🌹","🍫","🎵","🪞","👠",
@@ -1579,9 +1583,7 @@ function renderGachaSummary() {
   s.plats.forEach(g =>
     html += `<div class="sumrow plat">⭐ ПЛАТИНА: ${girl(g).name}! Экспа +5% навсегда</div>`);
   html += `<div class="sumrow">💥 Дубли: ${s.dupes}` +
-    (s.dupes ? ` → обменяны на <b>+${s.spinsGained} 🎲 спинов</b>` +
-      (s.spinsBurned ? ` <small>(${s.spinsBurned} сгорело — бак был полон)</small>` : "")
-    : "") + `</div>`;
+    (s.dupes ? ` → обменяны на <b>+${fmt(s.expGained)} 🧿 опыта</b>` : "") + `</div>`;
   html += `<div class="sumrow"><small>потрачено ${fmt(s.spent)} 🪙</small></div>`;
   gachaBody.innerHTML = html;
   gachaRoll.style.display = "none";
@@ -1665,12 +1667,12 @@ function roulette(items, targetIdx, loops, done) {
 }
 
 const sDouble = () => { beep(200, .12, "square", .12); beep(150, .18, "square", .12, .1); beep(100, .3, "square", .1, .2); };
-// DOUBLE: под заголовком крупно показываем, СКОЛЬКО спинов дал дубль (или что сгорели)
-function doubleFx(credited) {
+// DOUBLE: под заголовком крупно показываем, СКОЛЬКО опыта дал дубль (v13.3)
+function doubleFx(gain) {
   const d = document.createElement("div");
   d.id = "doubleFx";
   d.innerHTML = `<div class="dbltxt">DOUBLE!</div>` +
-    `<div class="dblsub">${credited > 0 ? `+${credited} 🎲 СПИНОВ` : "спины полные — +0 🎲"}</div>`;
+    `<div class="dblsub">+${fmt(gain)} 🧿 ОПЫТА</div>`;
   document.body.appendChild(d);
   setTimeout(() => d.remove(), 1600);
   const app = document.getElementById("app");
@@ -1680,18 +1682,16 @@ function doubleFx(credited) {
 function revealCard(g, c, cell) {
   cell.classList.remove("sel");
   if (S.cards[g][c] > 0) {
-    // дубль: DOUBLE на весь экран + тряска + разлёт 🎲 + утешительные спины
+    // дубль: DOUBLE на весь экран + тряска + разлёт 🧿 + утешительный ОПЫТ (скейлится с уровнем)
     S.cards[g][c]++;
-    const credited = Math.min(DUPE_SPINS, SPINS_MAX - S.spins);
-    S.spins += credited;
+    const gain = dupeExp();
+    S.exp += gain;
     cell.classList.add("dupe");
     sDouble(); vibrate([60, 40, 120]);
-    doubleFx(credited);
-    emojiBurst("🎲", 22, true);
-    if (credited > 0) floatAt(document.getElementById("spinsBar"), `+${credited} 🎲`, "#4db8e8");
-    gachaLog.textContent = credited > 0
-      ? `💥 DOUBLE! «изобр. ${c + 1}» уже есть — утешение +${credited} 🎲`
-      : `💥 DOUBLE! «изобр. ${c + 1}» уже есть — спины полные, утешение сгорело`;
+    doubleFx(gain);
+    emojiBurst("🧿", 22, true);
+    floatAt(document.getElementById("expVal").parentElement, `+${fmt(gain)} 🧿`, "#9fd64e");
+    gachaLog.textContent = `💥 DOUBLE! «изобр. ${c + 1}» уже есть — утешение +${fmt(gain)} 🧿 опыта`;
   } else {
     S.cards[g][c] = 1;
     cell.classList.remove("no");
@@ -1818,7 +1818,7 @@ gachaMulti.addEventListener("click", e => {
   // newCards — плоский список {g, c} (для пролистывающейся галереи итогов, v13).
   // Собрав страницу, ролл переходит на следующую (иначе остаток роллов — дубли)
   const sum = { rolls: k, spent: k * cost, newCards: [],
-                dupes: 0, spinsGained: 0, spinsBurned: 0, plats: [] };
+                dupes: 0, expGained: 0, plats: [] };
   let page = inProgressPage();
   ensurePage(page);
   for (let i = 0; i < k; i++) {
@@ -1826,8 +1826,8 @@ gachaMulti.addEventListener("click", e => {
     const g = page * 9 + Math.floor(Math.random() * 9), c = Math.floor(Math.random() * 9);
     if (S.cards[g][c] > 0) {
       S.cards[g][c]++; sum.dupes++;
-      const credited = Math.min(DUPE_SPINS, SPINS_MAX - S.spins);
-      S.spins += credited; sum.spinsGained += credited; sum.spinsBurned += DUPE_SPINS - credited;
+      const gain = dupeExp();
+      S.exp += gain; sum.expGained += gain;
     } else {
       S.cards[g][c] = 1; sum.newCards.push({ g, c });
       if (S.cards[g].every(n => n > 0)) { S.plat[g] = true; sum.plats.push(g); }
