@@ -181,6 +181,27 @@
   }
   footer a { color: #6f717a; }
 
+  /* ═══ DEV-ПАНЕЛЬ — УДАЛИТЬ ПЕРЕД РЕЛИЗОМ (этот CSS + блок #devPanel в разметке + обработчики в JS) ═══ */
+  #devPanel {
+    margin: 8px auto 6px; width: min(92%, 440px); box-sizing: border-box;
+    display: flex; align-items: stretch; gap: 6px; padding: 6px;
+    border: 2px dashed #ffb300; border-radius: 8px;
+    background: repeating-linear-gradient(45deg, #1a1607, #1a1607 8px, #221d05 8px, #221d05 16px);
+  }
+  #devPanel .devTag {
+    display: flex; align-items: center;
+    font: 700 10px/1 monospace; letter-spacing: 1px;
+    color: #1a1607; background: #ffb300; padding: 0 6px; border-radius: 3px;
+  }
+  #devPanel button {
+    flex: 1; padding: 7px 4px; cursor: pointer;
+    font: 600 11px monospace; color: #ffe08a;
+    background: #2a2308; border: 1px solid #ffb300; border-radius: 5px;
+  }
+  #devPanel button:active { transform: scale(.96); }
+  #devPanel #devWipe { color: #ff9a9a; border-color: #e8556d; background: #2a0d10; }
+  /* ═══ /DEV-ПАНЕЛЬ ═══ */
+
   /* ── modal ── */
   .overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,.65); display: none;
@@ -388,6 +409,15 @@
     прото-баланс ускорен · <a href="#" id="resetLink">сброс</a>
   </footer>
 </div>
+
+<!-- ═══ DEV-ПАНЕЛЬ — УДАЛИТЬ ПЕРЕД РЕЛИЗОМ (этот блок + #devPanel в CSS + секция «dev-кнопки» в JS) ═══ -->
+<div id="devPanel">
+  <span class="devTag">DEV</span>
+  <button id="devHarda">+ харды</button>
+  <button id="devExp">+ экспы</button>
+  <button id="devWipe">стереть сейв ⟲</button>
+</div>
+<!-- ═══ /DEV-ПАНЕЛЬ ═══ -->
 
 <div class="overlay" id="upgOverlay">
   <div class="sheet">
@@ -1485,14 +1515,27 @@ function tutStart() {
 window.addEventListener("resize", () => { if (TUT.active) tutRender(); });
 
 /* ═══════════ сброс ═══════════ */
+function wipeSave() {
+  localStorage.removeItem("gamblecore_proto");
+  S = DEFAULTS();
+  update(); save();
+  if (!TUT.active) tutStart(); // сброс = снова первый запуск
+}
 document.getElementById("resetLink").addEventListener("click", e => {
   e.preventDefault();
-  if (confirm("Сбросить весь прогресс прототипа?")) {
-    localStorage.removeItem("gamblecore_proto");
-    S = DEFAULTS();
-    update(); save();
-    if (!TUT.active) tutStart(); // сброс = снова первый запуск
-  }
+  if (confirm("Сбросить весь прогресс прототипа?")) wipeSave();
+});
+
+/* ═══════════ DEV-КНОПКИ — УДАЛИТЬ ПЕРЕД РЕЛИЗОМ (этот блок + #devPanel в CSS и разметке) ═══════════ */
+// выдача масштабируется с уровнем перерождения, чтобы оставаться полезной на лейте
+document.getElementById("devHarda").addEventListener("click", () => {
+  S.harda += 10000 * global(); update(); save();
+});
+document.getElementById("devExp").addEventListener("click", () => {
+  S.exp += Math.round(goal() * 0.5); update(); save();
+});
+document.getElementById("devWipe").addEventListener("click", () => {
+  if (confirm("DEV: стереть сейв и начать с нуля?")) wipeSave();
 });
 
 /* ═══════════ отрисовка ═══════════ */
