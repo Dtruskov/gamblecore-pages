@@ -162,8 +162,12 @@
   .btn:active { transform: scale(.97); }
   .btn:disabled { opacity: .4; cursor: not-allowed; }
   .btn.accent { background: #e8556d; }
+  /* магазин — жёлтый, гача — розовый */
+  #shopBtn { background: #f5c518; color: #2a2306; }
+  #collBtn { background: #ff5fa2; color: #fff; }
+  /* перерождение и автоспин выше «прокачки» (44px) в 1.33 → ~59px */
   #rebirthBtn {
-    position: relative; overflow: hidden; background: #2f3137; padding: 0; height: 44px;
+    position: relative; overflow: hidden; background: #2f3137; padding: 0; height: 59px;
   }
   #rebirthFill {
     position: absolute; inset: 0; width: 0%; background: #6f9a33;
@@ -183,8 +187,8 @@
   #upgBtn { position: relative; overflow: hidden; padding: 0; height: 44px; }
   #upgFill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: #e8556d; transition: width .35s ease; }
   #upgBtnTxt { position: relative; z-index: 1; line-height: 44px; }
-  /* автоспин и перерождение — одного размера (height 44px, текст по центру) */
-  #autoBtn { height: 44px; padding: 0 6px; display: flex; align-items: center; justify-content: center; }
+  /* автоспин и перерождение — одного размера (height 59px, текст по центру) */
+  #autoBtn { height: 59px; padding: 0 6px; display: flex; align-items: center; justify-content: center; }
   #autoBtn.on { background: #4db8e8; color: #082230; }
 
   footer {
@@ -363,9 +367,21 @@
     50% { background: rgba(150,110,0,.78); }
   }
   .jpsheet {
+    position: relative; z-index: 2;          /* над фоновым VFX-слоем */
     background: linear-gradient(135deg, #3a2f12, #5a4716);
     border: 2px solid #ffd34d; text-align: center; gap: 14px;
     animation: jpglow .7s ease-in-out infinite;
+  }
+  /* изобильный фон джекпота: дождь монет/блёсток позади окна */
+  #jpVfx { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 1; }
+  .jpfall {
+    position: absolute; top: -10vh; will-change: transform, opacity;
+    animation: jpfall linear forwards;
+  }
+  @keyframes jpfall {
+    0%   { transform: translateY(-10vh) rotate(0); opacity: 0; }
+    12%  { opacity: 1; }
+    100% { transform: translateY(112vh) rotate(var(--r, 360deg)); opacity: .85; }
   }
   @keyframes jpglow {
     0%,100% { box-shadow: 0 0 26px #ffd34d; }
@@ -548,6 +564,7 @@
 </div>
 
 <div class="overlay" id="jackpotOverlay">
+  <div id="jpVfx"></div>
   <div class="sheet jpsheet">
     <div class="jptitle">💰 ДЖЕКПОТ! 💰</div>
     <div class="jpdesc" id="jpDesc">—</div>
@@ -1296,7 +1313,7 @@ document.getElementById("rbGo").addEventListener("click", () => {
 // спины (кап жёсткий), не харда. Полный сет → платиновая: +5% к экспе НАВСЕГДА
 // (аддитивно, переживает перерождение; харду НЕ трогает). balance.md §4a
 const rollCost = () => Math.round(GACHA_COST * GACHA_RATIO ** (S.level - 1));
-const DUPE_SPINS = 3;  // v11: 10 → 3 (запрос автора) — balance.md §4a
+const DUPE_SPINS = 1;  // v12: 3 → 1 (запрос автора) — balance.md §4a
 // эмодзи карточек — детерминированные «рандомные»: внутри девочки не повторяются
 const CARD_EMOJI = ["🌸","🍓","🎀","🍰","💄","🌙","💎","🍷","🧁","🌺","🎶","🍒",
   "💋","🦋","🌊","🔥","🍑","✨","🎧","🍭","🌈","🍾","💌","🌹","🍫","🎵","🪞","👠",
@@ -1666,21 +1683,54 @@ function jackpotAttention() {        // мигание (CSS) + вибрация 
   vibrate([0, 300, 150, 300, 150, 500]);
   confetti(); confetti();
 }
+// изобильный фон: пока окно открыто — дождь монет/блёсток + периодические конфетти
+const jpVfx = document.getElementById("jpVfx");
+const JP_POOL = ["💰", "🪙", "💎", "✨", "🎲", "🧿", "⭐", "💵", "🤑", "🌟"];
+let jpVfxTimer = null, jpVfxTick = 0;
+function jackpotVFXStart() {
+  jpVfx.innerHTML = ""; jpVfxTick = 0;
+  jackpotSpawn(14);                         // сразу плотный залп
+  jpVfxTimer = setInterval(() => {
+    jackpotSpawn(3);
+    if (++jpVfxTick % 3 === 0) confetti();  // волны конфетти ~каждые 0.6с
+  }, 200);
+}
+function jackpotSpawn(n) {
+  for (let i = 0; i < n; i++) {
+    const d = document.createElement("span");
+    d.className = "jpfall";
+    d.textContent = JP_POOL[Math.floor(Math.random() * JP_POOL.length)];
+    d.style.left = (Math.random() * 100) + "%";
+    d.style.fontSize = (20 + Math.random() * 36) + "px";
+    const dur = 1.5 + Math.random() * 1.8;
+    d.style.animationDuration = dur + "s";
+    d.style.setProperty("--r", (Math.random() * 720 - 360) + "deg");
+    jpVfx.appendChild(d);
+    setTimeout(() => d.remove(), dur * 1000 + 120);
+  }
+}
+function jackpotVFXStop() {
+  clearInterval(jpVfxTimer); jpVfxTimer = null;
+  jpVfx.innerHTML = "";
+}
 function showJackpot() {
   jpPending = jackpotReward();
   jpDesc.textContent = `За рекламу: +${fmt(jpPending.harda)} 🪙  +${fmt(jpPending.exp)} 🧿  +${jpPending.spins} 🎲`;
   jackpotOverlay.classList.add("show");
   jackpotAttention();
+  jackpotVFXStart();
   clearTimeout(jpTimer);
   jpTimer = setTimeout(closeJackpot, 5000); // окно живёт 5 секунд, потом само закрывается
 }
 function closeJackpot() {
   clearTimeout(jpTimer);
+  jackpotVFXStop();
   jackpotOverlay.classList.remove("show");
   lastJackpotAt = Date.now(); // следующий джекпот — через интервал после закрытия
 }
 function claimJackpot() {           // 🎬 реклама (заглушка) → насыпать награду
   clearTimeout(jpTimer);
+  jackpotVFXStop();
   const r = jpPending || jackpotReward();
   S.harda += r.harda; S.totalWon += r.harda;
   S.exp += r.exp;
@@ -1930,7 +1980,7 @@ function update() {
 
   // автоспин скрыт до 1-го перерождения (открывается наградой за престиж, v12)
   autoBtn.style.display = S.autoUnlocked ? "" : "none";
-  autoBtn.textContent = "автоспин: " + (S.auto ? "вкл" : "выкл") + " · 🐢 ×2 медленнее руки";
+  autoBtn.textContent = "автоспин: " + (S.auto ? "вкл" : "выкл");
   autoBtn.classList.toggle("on", S.auto);
 
   // окно прокачки: только харда (экспа/спины убраны — balance.md §3, 2026-06-13)
