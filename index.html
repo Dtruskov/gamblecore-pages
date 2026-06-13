@@ -183,7 +183,7 @@
 
   /* ═══ DEV-ПАНЕЛЬ — УДАЛИТЬ ПЕРЕД РЕЛИЗОМ (этот CSS + блок #devPanel в разметке + обработчики в JS) ═══ */
   #devPanel {
-    margin: 8px auto 6px; width: min(92%, 440px); box-sizing: border-box;
+    margin-top: 10px; flex-shrink: 0;
     display: flex; align-items: stretch; gap: 6px; padding: 6px;
     border: 2px dashed #ffb300; border-radius: 8px;
     background: repeating-linear-gradient(45deg, #1a1607, #1a1607 8px, #221d05 8px, #221d05 16px);
@@ -408,16 +408,16 @@
     спинов: <span id="stSpins">0</span> · выиграно: <span id="stWon">0</span> ·
     прото-баланс ускорен · <a href="#" id="resetLink">сброс</a>
   </footer>
-</div>
 
-<!-- ═══ DEV-ПАНЕЛЬ — УДАЛИТЬ ПЕРЕД РЕЛИЗОМ (этот блок + #devPanel в CSS + секция «dev-кнопки» в JS) ═══ -->
-<div id="devPanel">
-  <span class="devTag">DEV</span>
-  <button id="devHarda">+ харды</button>
-  <button id="devExp">+ экспы</button>
-  <button id="devWipe">стереть сейв ⟲</button>
+  <!-- ═══ DEV-ПАНЕЛЬ — УДАЛИТЬ ПЕРЕД РЕЛИЗОМ (этот блок + #devPanel в CSS + секция «dev-кнопки» в JS) ═══ -->
+  <div id="devPanel">
+    <span class="devTag">DEV</span>
+    <button id="devHarda">+ харды</button>
+    <button id="devExp">+ экспы</button>
+    <button id="devWipe">стереть сейв ⟲</button>
+  </div>
+  <!-- ═══ /DEV-ПАНЕЛЬ ═══ -->
 </div>
-<!-- ═══ /DEV-ПАНЕЛЬ ═══ -->
 
 <div class="overlay" id="upgOverlay">
   <div class="sheet">
