@@ -502,7 +502,7 @@ const GIRLS = [
 /* ═══════════ состояние ═══════════ */
 const SAVE_V = 12;
 // версия билда — мелким текстом в футере (см. разметку футера)
-const BUILD = "v8 · 2026-06-13";
+const BUILD = "v8.1 · 2026-06-13";
 // DEFAULTS — фабрика: cards/plat — массивы, общие ссылки между ранами недопустимы
 const DEFAULTS = () => ({
   v: SAVE_V, spins: SPINS_MAX, harda: 0, exp: 0, level: 1,
@@ -1414,7 +1414,9 @@ function tutShow(target, hint, opts = {}) {
   if (opts.paw) {
     const p = opts.pawEl ? opts.pawEl.getBoundingClientRect() : r;
     tutPaw.style.left = (p.left + p.width / 2) + "px";
-    tutPaw.style.top = (p.top + 4) + "px";
+    // палец 👇 ставим НАД целью: кончик (низ глифа) указывает на её верхний край,
+    // а не центр пальца на центре кнопки (плейтест 2026-06-13). −36 ≈ высота глифа
+    tutPaw.style.top = (p.top - 36) + "px";
   }
 }
 function tutHide() {
