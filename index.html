@@ -169,7 +169,12 @@
     position: absolute; inset: 0; width: 0%; background: #6f9a33;
     transition: width .35s ease;
   }
-  #rebirthTxt { position: relative; z-index: 1; line-height: 44px; }
+  /* текст по центру через flex (line-height съезжал при длинной строке) */
+  #rebirthTxt {
+    position: relative; z-index: 1; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 8px; text-align: center;
+  }
   #rebirthBtn.ready { animation: glow 1.2s ease infinite; }
   #rebirthBtn.ready #rebirthFill { background: #9fd64e; }
   #rebirthBtn.ready #rebirthTxt { color: #1c2208; }
@@ -178,6 +183,8 @@
   #upgBtn { position: relative; overflow: hidden; padding: 0; height: 44px; }
   #upgFill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: #e8556d; transition: width .35s ease; }
   #upgBtnTxt { position: relative; z-index: 1; line-height: 44px; }
+  /* автоспин и перерождение — одного размера (height 44px, текст по центру) */
+  #autoBtn { height: 44px; padding: 0 6px; display: flex; align-items: center; justify-content: center; }
   #autoBtn.on { background: #4db8e8; color: #082230; }
 
   footer {
@@ -188,9 +195,11 @@
 
   /* ═══ DEV-ПАНЕЛЬ — УДАЛИТЬ ПЕРЕД РЕЛИЗОМ (этот CSS + блок #devPanel в разметке + обработчики в JS) ═══ */
   #devPanel {
-    margin-top: 10px; flex-shrink: 0;
+    /* прикреплена к нижней границе экрана, отделена от основного UI (v11) */
+    position: fixed; left: 50%; transform: translateX(-50%); bottom: 0; z-index: 9;
+    width: 100%; max-width: 440px;
     display: flex; align-items: stretch; gap: 6px; padding: 6px;
-    border: 2px dashed #ffb300; border-radius: 8px;
+    border: 2px dashed #ffb300; border-radius: 8px 8px 0 0;
     background: repeating-linear-gradient(45deg, #1a1607, #1a1607 8px, #221d05 8px, #221d05 16px);
   }
   #devPanel .devTag {
@@ -329,6 +338,60 @@
     color: #ffd34d; font-weight: 700; box-shadow: 0 0 12px rgba(255,211,77,.55);
   }
 
+  /* ── магазин бустов (v11) ── */
+  .shopItem {
+    display: flex; align-items: center; gap: 10px;
+    background: #2f3137; border-radius: 12px; padding: 10px; margin-bottom: 8px;
+    cursor: pointer;
+  }
+  .shopItem:active { transform: scale(.98); }
+  .shopItem.on { box-shadow: 0 0 10px rgba(255,211,77,.6); background: #34302238; }
+  .shopIco { font-size: 28px; flex: none; width: 38px; text-align: center; }
+  .shopInfo { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .shopInfo b { font-size: 13px; }
+  .shopInfo span { font-size: 11px; color: #b9bac2; line-height: 1.3; }
+  .shopGet {
+    flex: none; font-size: 12px; font-weight: 700; color: #1c2208;
+    background: #9fd64e; border-radius: 8px; padding: 8px 9px; text-align: center; line-height: 1.2;
+  }
+  .shopGet small { font-weight: 500; opacity: .8; font-size: 9px; }
+
+  /* ── джекпот (v12): яркое окно, мигание привлекает внимание ── */
+  #jackpotOverlay.show { animation: jpbg .6s ease-in-out infinite; }
+  @keyframes jpbg {
+    0%,100% { background: rgba(0,0,0,.7); }
+    50% { background: rgba(150,110,0,.78); }
+  }
+  .jpsheet {
+    background: linear-gradient(135deg, #3a2f12, #5a4716);
+    border: 2px solid #ffd34d; text-align: center; gap: 14px;
+    animation: jpglow .7s ease-in-out infinite;
+  }
+  @keyframes jpglow {
+    0%,100% { box-shadow: 0 0 26px #ffd34d; }
+    50% { box-shadow: 0 0 60px #ffd34d, 0 0 110px rgba(255,211,77,.6); }
+  }
+  .jptitle {
+    font-size: 30px; font-weight: 900; color: #ffd34d; letter-spacing: 1px;
+    text-shadow: 0 0 18px #ffd34d, 0 3px 0 #a06a00;
+    animation: jptitlepulse .5s ease-in-out infinite alternate;
+  }
+  @keyframes jptitlepulse { from { transform: scale(1); } to { transform: scale(1.08); } }
+  .jpdesc { font-size: 14px; color: #ffe9b0; font-weight: 700; line-height: 1.5; }
+  .jpclaim {
+    border: none; border-radius: 14px; padding: 16px 12px; cursor: pointer;
+    font-family: inherit; font-size: 18px; font-weight: 900; color: #3a2200;
+    background: linear-gradient(135deg, #ffe08a, #ff9a3c);
+    box-shadow: 0 4px 14px rgba(0,0,0,.4);
+    animation: jpclaimpulse .5s ease-in-out infinite alternate;
+  }
+  .jpclaim:active { transform: scale(.97); }
+  @keyframes jpclaimpulse { from { transform: scale(1); } to { transform: scale(1.05); } }
+  .jpclose {
+    border: none; background: none; cursor: pointer; font-family: inherit;
+    color: #caa94e; font-size: 12px; padding: 4px; text-decoration: underline;
+  }
+
   /* ── winline: прошлый вин висит, пока крутятся барабаны; тускнеет при проигрыше ── */
   #winline { transition: opacity .3s, filter .3s; }
   #winline.old { opacity: .35; filter: grayscale(.7); }
@@ -399,7 +462,7 @@
 
   <div id="meta">
     <div id="metaRow">
-      <button class="btn" disabled>🔒 магазин</button>
+      <button class="btn" id="shopBtn">🛒 магазин</button>
       <button class="btn" id="upgBtn">
         <div id="upgFill"></div><div id="upgBtnTxt">прокачка</div>
       </button>
@@ -408,7 +471,7 @@
     <button class="btn" id="rebirthBtn">
       <div id="rebirthFill"></div><div id="rebirthTxt">—</div>
     </button>
-    <button class="btn" id="autoBtn">автоспин: выкл</button>
+    <button class="btn" id="autoBtn" style="display:none">автоспин: выкл</button>
   </div>
 
   <footer>
@@ -418,7 +481,8 @@
   </footer>
 
   <!-- ═══ DEV-ПАНЕЛЬ — УДАЛИТЬ ПЕРЕД РЕЛИЗОМ (этот блок + #devPanel в CSS + секция «dev-кнопки» в JS) ═══ -->
-  <div id="devPanel">
+  <!-- скрыта; раскрывается 5 тапами по морде маскота (v12) -->
+  <div id="devPanel" style="display:none">
     <span class="devTag">DEV</span>
     <button id="devHarda">+ харды</button>
     <button id="devExp">+ экспы</button>
@@ -434,6 +498,7 @@
     <p class="big" id="upgWallet">—</p>
     <p class="big" id="upgState">—</p>
     <button class="btn accent" id="upgHarda">—</button>
+    <button class="btn" id="upgAd" style="display:none">🎬 не хватает? Прокачать за рекламу</button>
     <p id="upgLog" style="min-height:18px"></p>
     <button class="btn" id="upgClose">закрыть</button>
   </div>
@@ -456,8 +521,38 @@
     <div id="gachaBody"></div>
     <button class="btn accent" id="gachaRoll" style="display:none">—</button>
     <button class="btn accent" id="gachaMulti" style="display:none">—</button>
+    <button class="btn" id="gachaAd" style="display:none">🎬 не хватает? Ролл за рекламу</button>
     <p id="gachaLog" style="min-height:18px"></p>
     <button class="btn" id="gachaBack">закрыть</button>
+  </div>
+</div>
+
+<div class="overlay" id="shopOverlay">
+  <div class="sheet scroll">
+    <h2>Магазин 🛒</h2>
+    <p style="font-size:11px">Сейчас всё <b>бесплатно для теста</b>. В релизе — за ⭐ Stars или 🎬 рекламу.</p>
+    <div id="shopBody"></div>
+    <p id="shopLog" style="min-height:18px"></p>
+    <button class="btn" id="shopClose">закрыть</button>
+  </div>
+</div>
+
+<div class="overlay" id="spinsOverlay">
+  <div class="sheet">
+    <h2>Спины кончились 🎲</h2>
+    <p>Энергия на нуле. Подожди реген — или возьми ещё (бесплатно для теста):</p>
+    <button class="btn accent" id="spinsBuy">🎲 +10 спинов</button>
+    <button class="btn" id="spinsAd">🎬 +10 за рекламу</button>
+    <button class="btn" id="spinsClose">закрыть</button>
+  </div>
+</div>
+
+<div class="overlay" id="jackpotOverlay">
+  <div class="sheet jpsheet">
+    <div class="jptitle">💰 ДЖЕКПОТ! 💰</div>
+    <div class="jpdesc" id="jpDesc">—</div>
+    <button class="jpclaim" id="jpClaim">🎬 ЗАБРАТЬ ДЖЕКПОТ</button>
+    <button class="jpclose" id="jpClose">закрыть</button>
   </div>
 </div>
 
@@ -478,10 +573,13 @@ const SYMS = [
   { id: "harda", emoji: "🪙", w: 52, pay: 200  },
   { id: "exp",   emoji: "🧿", w: 33, pay: 1000 },
   { id: "spins", emoji: "🎲", w: 15, pay: 10   },
+  // wild ⚡ (v11): 4-й символ, подменяет любой; 3×⚡ = джекпот всех трёх (balance.md §1a)
+  { id: "wild",  emoji: "⚡", w: 12, pay: 0, wild: true },
 ];
+const WILD = SYMS.find(s => s.wild);
 const WSUM = SYMS.reduce((a, s) => a + s.w, 0);
 const REGEN_MS = 15000;          // 1 спин / 15 сек (прото; в проде медленнее)
-const SPINS_MAX = 100;
+const SPINS_MAX = 50;            // v11: 100 → 50 (запрос автора) — balance.md §2
 const UPG_BASE = 400, UPG_RATIO = 1.4, UPG_MAX = 5;
 const GOALS = [5000, 15000, 40000, 100000, 250000];
 // пассивная экспа за каждый спин (~66% потока экспы) — цель: уровень ~раз в 2 мин
@@ -497,6 +595,12 @@ const GACHA_COST = 500, GACHA_RATIO = 1.9;
 // кап мульти-ролла: при руннэйв-харде floor(harda/cost) мог уйти в тысячи итераций
 // и подвесить устройство — ограничиваем (balance.md §5)
 const MULTI_MAX = 100;
+// магазин бустов (v11, balance.md §7, monetization.md) — сейчас всё бесплатно (тест)
+const FIVE_MIN = 5 * 60 * 1000;
+const TURBO_T1 = 1.0, TURBO_T2 = 0.5;  // durMul: тир1 = рука, тир2 = вдвое быстрее
+const WILD_STREAK = 10;                // спинов с принудительным ⚡ на 1-м барабане
+const SHOP_SPINS = 10;                 // «+10 спинов» — мгновенно
+const BUFF_MULT = 2;                   // «×2 харда+опыт» на 5 минут
 const GIRLS = [
   { name: "Юки",  ava: "👩" },   { name: "Аска", ava: "👩‍🦰" },  { name: "Рин",    ava: "🧑‍🦰" },
   { name: "Мика", ava: "👩‍🦱" }, { name: "Хана", ava: "🧑‍🦱" },  { name: "Сора",   ava: "👩‍🦳" },
@@ -504,9 +608,11 @@ const GIRLS = [
 ];
 
 /* ═══════════ состояние ═══════════ */
-const SAVE_V = 14;
+const SAVE_V = 16;
 // версия билда — мелким текстом в футере (см. разметку футера)
-const BUILD = "v10 · 2026-06-13";
+const BUILD = "v12 · 2026-06-14";
+// джекпот: ~раз в 3 минуты всплывает окно с наградой за рекламу (balance.md §8)
+const JACKPOT_MS = 180000;
 // DEFAULTS — фабрика: cards/plat — массивы, общие ссылки между ранами недопустимы
 const DEFAULTS = () => ({
   v: SAVE_V, spins: SPINS_MAX, harda: 0, exp: 0, level: 1,
@@ -514,6 +620,11 @@ const DEFAULTS = () => ({
   lastRegen: Date.now(), totalSpins: 0, totalWon: 0, auto: false,
   cards: GIRLS.map(() => Array(9).fill(0)), plat: GIRLS.map(() => false),
   tutDone: false,
+  // магазинные бусты (v11): таймеры-таймстемпы переживают перезагрузку в своём окне,
+  // переживают перерождение (это «инапы», не ран-прогресс) — balance.md §7
+  turboUntil: 0, turboTier: 1, mult2Until: 0, wildStreak: 0,
+  // автоспин открывается за 1-е перерождение (v12); autoTutDone — его мини-туториал
+  autoUnlocked: false, autoTutDone: false,
   savedAt: 0, // когда сейв записан — конфликт устройств решается «свежее побеждает»
 });
 let S = load();
@@ -588,6 +699,11 @@ const global = () => 2 ** (S.level - 1);
 // бьёт по тройке экспы И пассивной экспе за крутку; переживает перерождение.
 // Харду НЕ множит — иначе снежный ком (balance.md §4a, решение 2026-06-13)
 const platMult = () => 1 + 0.05 * S.plat.filter(Boolean).length;
+// магазинные бусты (v11, balance.md §7): tempMult — временный ×2 к харде/экспе;
+// turboMul — durMul автоспина (тир1 = рука, тир2 вдвое быстрее), иначе медленный авто
+const turboActive = () => S.turboUntil > Date.now();
+const turboMul = () => !turboActive() ? AUTO_DURMUL : (S.turboTier >= 2 ? TURBO_T2 : TURBO_T1);
+const tempMult = () => S.mult2Until > Date.now() ? BUFF_MULT : 1;
 // без оператора ?? — он требует Chrome 80+ и валит парсинг скрипта на старых
 // webview (игра не открывалась на части устройств), всё дальше тоже мёртвое
 const goal = () => { const g = GOALS[S.level - 1]; return g != null ? g : GOALS[GOALS.length - 1] * 2.5 ** (S.level - GOALS.length); };
@@ -655,13 +771,13 @@ function say(kind, face) {
 }
 setInterval(() => { if (!spinning && Math.random() < .25) say("idle"); }, 12000);
 
-// ЧИТ для отладки (убрать перед релизом): тап по мордочке = полный бак спинов
-mface.style.cursor = "pointer";
+// DEV-панель скрыта; раскрывается 5 тапами по морде маскота (v12, убрать перед релизом)
+let devTaps = 0;
 mface.addEventListener("click", () => {
-  S.spins = SPINS_MAX; S.lastRegen = Date.now();
-  bubble.textContent = "🐾 чит: спины полные";
+  if (++devTaps < 5) return;
+  document.getElementById("devPanel").style.display = "flex";
+  bubble.textContent = "🛠 DEV-панель открыта";
   mface.classList.remove("pop"); void mface.offsetWidth; mface.classList.add("pop");
-  update(); save();
 });
 
 /* ═══════════ барабаны ═══════════ */
@@ -672,14 +788,16 @@ const randSym = () => {
 };
 // лента барабана — повторяющийся цикл из 3 разных иконок («виртуальный барабан»):
 // соседние символы никогда не совпадают, веса работают только на выбор символа стопа
+// 4 символа в цикле (v11: +wild ⚡): соседние и стык цикла никогда не совпадают,
+// у каждого барабана своя ротация — нет синхронных столбцов
 const CYCLES = [
-  [SYMS[0], SYMS[1], SYMS[2]],
-  [SYMS[1], SYMS[2], SYMS[0]],
-  [SYMS[2], SYMS[0], SYMS[1]],
+  [SYMS[0], SYMS[1], SYMS[2], SYMS[3]],
+  [SYMS[1], SYMS[3], SYMS[0], SYMS[2]],
+  [SYMS[2], SYMS[0], SYMS[3], SYMS[1]],
 ];
 const reels = [...document.querySelectorAll(".reel")].map((el, idx) => {
   const r = { el, strip: el.querySelector(".strip"), syms: [], center: 4, y: 0, tension: 0, cycle: CYCLES[idx] };
-  for (let i = 0; i < 9; i++) r.syms.push(r.cycle[i % 3]);
+  for (let i = 0; i < 9; i++) r.syms.push(r.cycle[i % r.cycle.length]);
   render(r); setY(r, PAD - r.center * CELL);
   return r;
 });
@@ -692,10 +810,10 @@ function spinReel(r, target, idx, durMul, heat) {
   return new Promise(resolve => {
     // подрезаем ленту ДО старта (невидимо), а не при остановке — иначе дёргается
     r.syms = r.syms.slice(r.center - 4); r.center = 4; r.tension = 0;
-    const nextSym = () => r.cycle[(r.cycle.indexOf(r.syms[r.syms.length - 1]) + 1) % 3];
+    const nextSym = () => r.cycle[(r.cycle.indexOf(r.syms[r.syms.length - 1]) + 1) % r.cycle.length];
     const add = 16 + idx * 6 + (heat ? 16 : 0); // при прогреве длиннее лента, скорость та же
     for (let i = 0; i < add; i++) r.syms.push(nextSym());
-    // довертеть цикл так, чтобы целевой символ лёг на центральную линию (макс +2 ячейки)
+    // довертеть цикл так, чтобы целевой символ лёг на центральную линию (макс +3 ячейки)
     while (r.syms[r.syms.length - 2] !== target) r.syms.push(nextSym());
     const newCenter = r.syms.length - 2;
     render(r);
@@ -840,6 +958,7 @@ async function doSpin(durMul, handY) {
       const b = document.getElementById("spinsBar");
       b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash");
       say("low", "😿");
+      if (!TUT.active) spinsOverlay.classList.add("show"); // окно покупки спинов (v11)
     }
     if (handY != null) knobTo(0, true);
     return;
@@ -854,18 +973,22 @@ async function doSpin(durMul, handY) {
   // туториал форсит исход — скриптованная тройка без рандома
   const forced = TUT.force ? SYMS.find(s => s.id === TUT.force) : null;
   const targets = reels.map(() => forced || randSym());
-  const heatSym = targets[0] === targets[1] ? targets[0] : null;
+  // wild-полоса (магазин §7): 1-й барабан принудительно ⚡ на N спинов (не в туториале)
+  if (!forced && S.wildStreak > 0) { targets[0] = WILD; S.wildStreak--; }
+  // прогрев: первые два СОВМЕСТИМЫ (равны или среди них wild) → томим третий.
+  // heatSym = подразумеваемый ресурс (определяет тир длительности)
+  const heatSym = compatPair(targets[0], targets[1]);
   const heatMul = heatSym ? (heatSym.id === "harda" ? 1.45 : 1.9) : 1;
   // рука-индикатор: возвращается за 90% времени барабанов (прогрев растягивает
   // и руку) — взвод кончается ровно к стыковке третьего барабана (feel.md §1a)
   if (handY != null) knobReturn(handY, (950 + 2 * 380) * durMul * heatMul * HAND_RETURN);
   await Promise.all(reels.map((r, i) =>
     spinReel(r, targets[i], i, i === 2 ? durMul * heatMul : durMul, i === 2 && !!heatSym)));
-  evaluate();
-  // прогрев был, а тройки нет — «вздох» третьего барабана вместо тишины
-  if (heatSym && targets[2] !== heatSym) nearMiss();
-  // пассивная экспа: бар перерождения ползёт каждый спин (balance.md §4)
-  S.exp += Math.round(EXP_PASSIVE * global() * platMult());
+  const won = evaluate();
+  // прогрев был, а выигрыша нет — «вздох» третьего барабана вместо тишины
+  if (heatSym && !won) nearMiss();
+  // пассивная экспа: бар перерождения ползёт каждый спин (balance.md §4); ×2 от буста
+  S.exp += Math.round(EXP_PASSIVE * global() * platMult() * tempMult());
   spinning = false;
   update(); save();
   if (TUT.active) tutOnSpinEnd();
@@ -878,22 +1001,58 @@ function bigCelebrate() {
   app.classList.remove("shake"); void app.offsetWidth; app.classList.add("shake");
 }
 
+// прогрев: подразумеваемый ресурс пары первых барабанов, если они совместимы
+// (равны или среди них wild), иначе null. Оба wild → редкий-тир (как «вот-вот джекпот»)
+function compatPair(a, b) {
+  if (a.wild && b.wild) return SYMS[1];
+  if (a === b) return a;
+  if (a.wild) return b;
+  if (b.wild) return a;
+  return null;
+}
+// итог линии с учётом wild: [] — мусор; [sym] — выигрыш ресурса (wild достроил линию);
+// все три ресурса — джекпот 3×⚡ (balance.md §1a)
+function lineWins(centers) {
+  const reals = centers.filter(s => !s.wild);
+  if (reals.length === 0) return SYMS.filter(s => !s.wild); // 3×⚡ — джекпот всех трёх
+  if (reals.every(s => s === reals[0])) return [reals[0]];  // не-wild совпали (wild подменил остальные)
+  return [];                                                 // два разных реальных = мусор
+}
+
+// возвращает true, если был выигрыш (для «вздоха» промаха после прогрева)
 function evaluate() {
   const centers = reels.map(r => r.syms[r.center]);
-  // только 3 в ряд, две иконки — мусор
-  if (centers[0] !== centers[1] || centers[1] !== centers[2]) {
+  const wins = lineWins(centers);
+  if (wins.length === 0) {
     loseStreak++;
     winline.classList.add("old"); // прошлый вин тускнеет, но висит до нового
     if (loseStreak >= 8 && Math.random() < .5) { say("lose", "😿"); loseStreak = 0; }
-    return;
+    return false;
   }
-  const sym = centers[0], g = global();
+  const g = global();
   loseStreak = 0;
   winline.classList.remove("old");
   reels.forEach(r => r.strip.children[r.center].classList.add("hit"));
 
+  // джекпот 3×⚡: базовые выплаты всех трёх ресурсов разом (balance.md §1a)
+  if (wins.length === 3) {
+    const h = Math.round(SYMS[0].pay * g * S.hardaMult * tempMult());
+    const e = Math.round(SYMS[1].pay * g * platMult() * tempMult());
+    const credited = Math.min(SYMS[2].pay, SPINS_MAX - S.spins); // кап жёсткий
+    S.harda += h; S.totalWon += h; S.exp += e; S.spins += credited;
+    winTxt.textContent = `⚡ JACKPOT! +${fmt(h)} 🪙 +${fmt(e)} 🧿` + (credited > 0 ? ` +${credited} 🎲` : "");
+    goldFlash();
+    floatText("+" + fmt(h) + " 🪙", "#e8556d", -64);
+    floatText("+" + fmt(e) + " 🧿", "#9fd64e", 0);
+    if (credited > 0) floatText("+" + credited + " 🎲", "#4db8e8", 64);
+    emojiBurst("⚡", 26, true);
+    bigCelebrate(); say("bigwin", "🤩");
+    return true;
+  }
+
+  const sym = wins[0];
   if (sym.id === "harda") {
-    const amt = Math.round(sym.pay * g * S.hardaMult); // платина харду НЕ множит — валюта гачи, иначе снежный ком
+    const amt = Math.round(sym.pay * g * S.hardaMult * tempMult()); // платина харду НЕ множит — валюта гачи, иначе снежный ком
     S.harda += amt; S.totalWon += amt;
     winCount("WIN +", amt, " харды");
     goldFlash();
@@ -902,7 +1061,7 @@ function evaluate() {
     for (let i = 0; i < 4; i++) sCoin(i);
     if (Math.random() < .4) say("win", "😸");
   } else if (sym.id === "exp") {
-    const amt = Math.round(sym.pay * g * platMult());
+    const amt = Math.round(sym.pay * g * platMult() * tempMult());
     S.exp += amt;
     winCount("🔥 BIG WIN +", amt, " экспы");
     goldFlash();
@@ -921,6 +1080,7 @@ function evaluate() {
     emojiBurst("🎲", 22, true);
     bigCelebrate(); say("bigwin", "🤩");
   }
+  return true;
 }
 
 /* ═══════════ натяжение лент от рычага (каскад слева-направо) ═══════════ */
@@ -1044,7 +1204,9 @@ autoBtn.addEventListener("click", () => {
 // 0.7–1.35). Руку автоспин НЕ задействует — рука только про ручную игру.
 // «турбо-автоспин» (нормальная скорость барабанов) — будущий инап (balance.md §2a)
 const AUTO_DURMUL = 2.2;
-setInterval(() => { if (S.auto && !spinning && S.spins >= 1) doSpin(AUTO_DURMUL); }, 300);
+// турбо-бust (магазин §7): durMul авто = turboMul() — медленный по умолчанию,
+// тир1 = скорость руки (1.0), тир2 = вдвое быстрее (0.5), пока активен таймер
+setInterval(() => { if (S.auto && S.autoUnlocked && !spinning && S.spins >= 1) doSpin(turboMul()); }, 300);
 
 /* ═══════════ реген спинов ═══════════ */
 function regen() {
@@ -1080,6 +1242,16 @@ function doUpg() {
   if (TUT.step === "upgBuy") tutGoto("upgClose");
 }
 document.getElementById("upgHarda").addEventListener("click", doUpg);
+// 🎬 ad-buy: не хватает харды → реклама даёт прокачку бесплатно (тест, monetization.md)
+document.getElementById("upgAd").addEventListener("click", () => {
+  if (S.upgCount >= UPG_MAX) return;
+  S.upgCount++; S.hardaMult += .5;
+  document.getElementById("upgLog").textContent = "🎬 Реклама! +50% к ХАРДЕ. Теперь x" + S.hardaMult;
+  sCoin(0); sCoin(2); vibrate(30);
+  emojiBurst("🎬", 10, false, document.getElementById("upgAd"));
+  update(); save();
+  if (TUT.step === "upgBuy") tutGoto("upgClose");
+});
 
 /* ═══════════ перерождение ═══════════ */
 const rbOverlay = document.getElementById("rbOverlay");
@@ -1101,9 +1273,11 @@ document.getElementById("rbClose").addEventListener("click", () => rbOverlay.cla
 document.getElementById("rbGo").addEventListener("click", () => {
   if (S.exp < goal()) return;
   const tiers = overTiers(); // считаем ДО сброса экспы и повышения уровня
+  const firstRebirth = !S.autoUnlocked; // автоспин открывается наградой за 1-й престиж
   S.level++; S.exp = 0;
   S.upgCount = 0; S.hardaMult = 1;
   S.spins = SPINS_MAX;
+  S.autoUnlocked = true;
   // перезрел → стартовая харда: тир × цена ролла УЖЕ нового уровня (balance.md §4)
   S.harda = tiers * rollCost();
   rbOverlay.classList.remove("show");
@@ -1112,6 +1286,8 @@ document.getElementById("rbGo").addEventListener("click", () => {
   if (tiers > 0) floatAt(document.getElementById("hardaVal").parentElement,
     `🎁 +${fmt(S.harda)} 🪙`, "#e8556d");
   update(); save();
+  // 1-е перерождение → разблокировали автоспин, мини-туториал про него (tutorial.md §2)
+  if (firstRebirth && !S.autoTutDone) setTimeout(startAutoTut, 900);
 });
 
 /* ═══════════ гача-коллекция ═══════════ */
@@ -1120,7 +1296,7 @@ document.getElementById("rbGo").addEventListener("click", () => {
 // спины (кап жёсткий), не харда. Полный сет → платиновая: +5% к экспе НАВСЕГДА
 // (аддитивно, переживает перерождение; харду НЕ трогает). balance.md §4a
 const rollCost = () => Math.round(GACHA_COST * GACHA_RATIO ** (S.level - 1));
-const DUPE_SPINS = 10;
+const DUPE_SPINS = 3;  // v11: 10 → 3 (запрос автора) — balance.md §4a
 // эмодзи карточек — детерминированные «рандомные»: внутри девочки не повторяются
 const CARD_EMOJI = ["🌸","🍓","🎀","🍰","💄","🌙","💎","🍷","🧁","🌺","🎶","🍒",
   "💋","🦋","🌊","🔥","🍑","✨","🎧","🍭","🌈","🍾","💌","🌹","🍫","🎵","🪞","👠",
@@ -1132,6 +1308,7 @@ const gachaOverlay = document.getElementById("gachaOverlay");
 const gachaTitle = document.getElementById("gachaTitle"), gachaBody = document.getElementById("gachaBody");
 const gachaRoll = document.getElementById("gachaRoll"), gachaLog = document.getElementById("gachaLog");
 const gachaMulti = document.getElementById("gachaMulti");
+const gachaAd = document.getElementById("gachaAd");
 const gachaBack = document.getElementById("gachaBack");
 let gachaGirl = null;    // null = галерея, число = страница девочки
 let gachaSummary = null; // итоги мульти-ролла — показываются вместо галереи
@@ -1157,6 +1334,8 @@ function renderGacha() {
     gachaMulti.textContent = `КУПИТЬ ЗА ${fmt(k * cost)} 🪙 — ${k} роллов`;
     gachaMulti.disabled = rolling;
     gachaMulti.classList.toggle("blink", !rolling && k >= 2);
+    // не хватает даже на 1 ролл → 🎬 реклама даёт ролл бесплатно (тест)
+    gachaAd.style.display = !rolling && k < 1 ? "" : "none";
     gachaBack.textContent = "закрыть";
   } else {
     const i = gachaGirl;
@@ -1174,6 +1353,7 @@ function renderGacha() {
     gachaBody.innerHTML = html + `</div>`;
     gachaRoll.style.display = "none";
     gachaMulti.style.display = "none";
+    gachaAd.style.display = "none";
     gachaBack.textContent = "← к девочкам";
   }
 }
@@ -1199,6 +1379,7 @@ function renderGachaSummary() {
   gachaBody.innerHTML = html;
   gachaRoll.style.display = "none";
   gachaMulti.style.display = "none";
+  gachaAd.style.display = "none";
   gachaBack.textContent = "ок";
 }
 
@@ -1293,13 +1474,12 @@ gachaBack.addEventListener("click", () => {
     if (TUT.step === "gachaClose") tutGoto("swipe3");
   }
 });
-gachaRoll.addEventListener("click", () => {
-  if (rolling || gachaGirl !== null || S.harda < rollCost()) return;
-  S.harda -= rollCost();
+// единый ролл (цена уже списана вызывающим): рулетка девочка → карточка
+function runRoll(burstEmoji, burstEl) {
   rolling = true;
   gachaLog.textContent = "";
-  emojiBurst("💖", 8, false, gachaRoll); // VFX нажатия ролла
-  if (TUT.active) tutHide();             // рулетку видно без темноты
+  emojiBurst(burstEmoji, 8, false, burstEl); // VFX нажатия
+  if (TUT.active) tutHide();                 // рулетку видно без темноты
   renderGacha(); // перерисовать с задизейбленной кнопкой и чистыми подсветками
   update(); save();
   // исход решается до анимации, рулетки — презентация (принцип feel.md №1)
@@ -1315,6 +1495,16 @@ gachaRoll.addEventListener("click", () => {
       roulette(cards, c, 2, cell => revealCard(g, c, cell));
     }, 850);
   });
+}
+gachaRoll.addEventListener("click", () => {
+  if (rolling || gachaGirl !== null || S.harda < rollCost()) return;
+  S.harda -= rollCost();
+  runRoll("💖", gachaRoll);
+});
+// 🎬 ad-buy: не хватает на ролл → реклама даёт ролл бесплатно (тест, monetization.md)
+gachaAd.addEventListener("click", () => {
+  if (rolling || gachaGirl !== null) return;
+  runRoll("🎬", gachaAd);
 });
 
 // мульти-ролл: вся харда → k роллов разом. Исходы решены до анимации (принцип №1),
@@ -1362,6 +1552,156 @@ gachaMulti.addEventListener("click", () => {
     setTimeout(step, 130 - 95 * p); // строчит всё быстрее
   })();
 });
+
+/* ═══════════ магазин бустов (v11) ═══════════ */
+// Сейчас всё бесплатно (тест). Релиз — Stars/реклама (monetization.md). Бусты —
+// таймеры (turboUntil/mult2Until) и счётчик (wildStreak), переживают перезагрузку
+// и перерождение в своём окне (balance.md §7)
+const shopOverlay = document.getElementById("shopOverlay");
+const shopBody = document.getElementById("shopBody");
+const shopLog = document.getElementById("shopLog");
+function buffLeft(until) {
+  const r = Math.max(0, until - Date.now());
+  const m = Math.floor(r / 60000), s = Math.floor(r / 1000) % 60;
+  return m + ":" + (s < 10 ? "0" : "") + s;
+}
+function renderShop() {
+  const items = [
+    { id: "turbo", ico: "🚀", name: "Турбо-автоспин",
+      desc: turboActive()
+        ? `активно: тир ${S.turboTier}/2 · осталось ${buffLeft(S.turboUntil)}`
+        : "автоспин = скорости руки · 2-я покупка = ещё ×2 быстрее · 5 мин",
+      on: turboActive() },
+    { id: "wild", ico: "⚡", name: "Wild — счастливая полоса",
+      desc: S.wildStreak > 0
+        ? `активно: ещё ${S.wildStreak} спинов с ⚡ на 1-м барабане`
+        : "1-й барабан = ⚡ wild на следующие 10 спинов",
+      on: S.wildStreak > 0 },
+    { id: "spins", ico: "🎲", name: "+10 спинов",
+      desc: `сразу +10 к энергии (кап ${SPINS_MAX}, излишек горит)`, on: false },
+    { id: "mult", ico: "✨", name: "×2 харда и опыт",
+      desc: tempMult() > 1
+        ? `активно: ×2 · осталось ${buffLeft(S.mult2Until)}`
+        : "удвоить выигрыш харды и опыта на 5 минут",
+      on: tempMult() > 1 },
+  ];
+  shopBody.innerHTML = items.map(it =>
+    `<div class="shopItem${it.on ? " on" : ""}" data-s="${it.id}">
+      <div class="shopIco">${it.ico}</div>
+      <div class="shopInfo"><b>${it.name}</b><span>${it.desc}</span></div>
+      <div class="shopGet">взять<br><small>тест 🆓</small></div>
+    </div>`).join("");
+}
+const SHOP_BUY = {
+  turbo() {
+    if (turboActive() && S.turboTier < 2) S.turboTier = 2;
+    else if (!turboActive()) S.turboTier = 1;
+    S.turboUntil = Date.now() + FIVE_MIN;
+    shopLog.textContent = `🚀 Турбо тир ${S.turboTier}/2 на 5 минут!`;
+  },
+  wild() {
+    S.wildStreak += WILD_STREAK;
+    shopLog.textContent = `⚡ Wild-полоса: ${S.wildStreak} спинов с ⚡ на 1-м барабане!`;
+  },
+  spins() {
+    const c = Math.min(SHOP_SPINS, SPINS_MAX - S.spins);
+    S.spins += c;
+    shopLog.textContent = c > 0 ? `🎲 +${c} спинов!` : "бак спинов полон — +0";
+  },
+  mult() {
+    S.mult2Until = Date.now() + FIVE_MIN;
+    shopLog.textContent = "✨ ×2 к харде и опыту на 5 минут!";
+  },
+};
+document.getElementById("shopBtn").addEventListener("click", () => {
+  shopLog.textContent = ""; renderShop(); shopOverlay.classList.add("show");
+});
+document.getElementById("shopClose").addEventListener("click", () => shopOverlay.classList.remove("show"));
+shopBody.addEventListener("click", e => {
+  const t = e.target.closest(".shopItem");
+  if (!t) return;
+  SHOP_BUY[t.dataset.s]();
+  vibrate(30); emojiBurst("✨", 8, false, t);
+  update(); save(); renderShop();
+});
+
+/* ═══════════ окно «спины кончились» (v11) ═══════════ */
+const spinsOverlay = document.getElementById("spinsOverlay");
+function buySpins(n) {           // бесплатно (тест): +n спинов, кап жёсткий
+  S.spins += Math.min(n, SPINS_MAX - S.spins);
+  spinsOverlay.classList.remove("show");
+  update(); save();
+}
+document.getElementById("spinsBuy").addEventListener("click", () => buySpins(SHOP_SPINS));
+document.getElementById("spinsAd").addEventListener("click", () => buySpins(SHOP_SPINS));
+document.getElementById("spinsClose").addEventListener("click", () => spinsOverlay.classList.remove("show"));
+
+/* ═══════════ периодический джекпот (v12, balance.md §8, monetization.md §3a) ═══════════ */
+// ~раз в 3 минуты всплывает яркое окно с наградой за рекламу — ловит внимание даже
+// у отложенного телефона (айдл крутит сам). Таймер рантайм (не персист): первый
+// джекпот через 3 мин после открытия, чтобы не файриться при перезагрузке.
+const jackpotOverlay = document.getElementById("jackpotOverlay");
+const jpDesc = document.getElementById("jpDesc");
+let lastJackpotAt = Date.now();
+let jpTimer = null, jpPending = null;
+function jackpotReward() {
+  return {
+    harda: Math.round(rollCost() * 5),   // ~5 роллов гачи (масштаб с уровнем)
+    exp:   Math.round(goal() * 0.25),    // четверть уровня
+    spins: SPINS_MAX,                     // полный бак (кап жёсткий)
+  };
+}
+// не мешаем: окно не всплывает во время спина/рулетки/туториала/другого оверлея
+function canJackpot() {
+  return !TUT.active && !spinning && !rolling
+    && !jackpotOverlay.classList.contains("show")
+    && !rbOverlay.classList.contains("show")
+    && !upgOverlay.classList.contains("show")
+    && !gachaOverlay.classList.contains("show")
+    && !shopOverlay.classList.contains("show")
+    && !spinsOverlay.classList.contains("show");
+}
+function jackpotAttention() {        // мигание (CSS) + вибрация + фанфара — привлечь внимание
+  sFanfare(); setTimeout(sFanfare, 450);
+  vibrate([0, 300, 150, 300, 150, 500]);
+  confetti(); confetti();
+}
+function showJackpot() {
+  jpPending = jackpotReward();
+  jpDesc.textContent = `За рекламу: +${fmt(jpPending.harda)} 🪙  +${fmt(jpPending.exp)} 🧿  +${jpPending.spins} 🎲`;
+  jackpotOverlay.classList.add("show");
+  jackpotAttention();
+  clearTimeout(jpTimer);
+  jpTimer = setTimeout(closeJackpot, 5000); // окно живёт 5 секунд, потом само закрывается
+}
+function closeJackpot() {
+  clearTimeout(jpTimer);
+  jackpotOverlay.classList.remove("show");
+  lastJackpotAt = Date.now(); // следующий джекпот — через интервал после закрытия
+}
+function claimJackpot() {           // 🎬 реклама (заглушка) → насыпать награду
+  clearTimeout(jpTimer);
+  const r = jpPending || jackpotReward();
+  S.harda += r.harda; S.totalWon += r.harda;
+  S.exp += r.exp;
+  const cr = Math.min(r.spins, SPINS_MAX - S.spins); // кап жёсткий
+  S.spins += cr;
+  jackpotOverlay.classList.remove("show");
+  lastJackpotAt = Date.now();
+  bigCelebrate(); emojiBurst("💰", 28, true); say("bigwin", "🤩");
+  floatAt(document.getElementById("hardaVal").parentElement, `+${fmt(r.harda)} 🪙`, "#e8556d");
+  floatAt(document.getElementById("expVal").parentElement, `+${fmt(r.exp)} 🧿`, "#9fd64e");
+  if (cr > 0) floatAt(document.getElementById("spinsBar"), `+${cr} 🎲`, "#4db8e8");
+  update(); save();
+}
+document.getElementById("jpClaim").addEventListener("click", claimJackpot);
+document.getElementById("jpClose").addEventListener("click", closeJackpot);
+// тап вне окна (по затемнению) тоже закрывает
+jackpotOverlay.addEventListener("click", e => { if (e.target === jackpotOverlay) closeJackpot(); });
+// тик: примерно раз в 3 минуты, когда момент подходящий (canJackpot)
+setInterval(() => {
+  if (Date.now() - lastJackpotAt >= JACKPOT_MS && canJackpot()) showJackpot();
+}, 1000);
 
 /* ═══════════ туториал (первый запуск, скриптованное ведение за ручку) ═══════════ */
 // Контракт — tutorial.md. Темнота ЧУТЬ ПРОЗРАЧНАЯ (rgba .72), «прожектор» с мягким
@@ -1472,7 +1812,7 @@ function tutRender() {
     case "swipe3":
       TUT.force = "spins";
       // гарантируем место под выигрыш +10: скриптованный «BIG WIN +10 спинов»
-      // не должен сгореть об кап (бар покажет ~89/100 — незаметно)
+      // не должен сгореть об кап (бар покажет ~39/50 — незаметно)
       if (S.spins > SPINS_MAX - 11) { S.spins = SPINS_MAX - 11; update(); }
       tutShow(rail, "Крути!", { paw: true });
       break;
@@ -1487,9 +1827,11 @@ function tutRender() {
         { tapAnywhere: true });
       break;
     }
-    case "autoTut":
+    case "autoReward":
+      // отдельный мини-туториал ПОСЛЕ 1-го перерождения (автоспин — награда за престиж)
+      TUT.force = null;
       tutShow(autoBtn,
-        "Автоспин крутит сам — но медленнее ручного 🐢 Рука быстрее. (тапни — и играй!)",
+        "🎁 Награда за перерождение: АВТОСПИН! Крутит сам, пока отдыхаешь — но медленнее руки 🐢 (тапни)",
         { tapAnywhere: true });
       break;
   }
@@ -1510,8 +1852,8 @@ function tutOnSpinEnd() {
 // «тапни, чтобы продолжить» — клик по блокеру (всплывает с .tutBlock)
 tutBlocks.addEventListener("click", () => {
   if (TUT.rendered !== TUT.step) return; // шаг ещё не отрисован — двойной тап не проскакивает
-  if (TUT.step === "spinsWon") tutGoto("autoTut");
-  else if (TUT.step === "autoTut") tutEnd();
+  if (TUT.step === "spinsWon") tutEnd();        // первый тутор кончается тут (автоспина ещё нет)
+  else if (TUT.step === "autoReward") autoTutEnd(); // мини-тутор автоспина после 1-го престижа
 });
 function tutEnd() {
   TUT.active = false; TUT.step = null; TUT.force = null;
@@ -1520,9 +1862,21 @@ function tutEnd() {
   S.tutDone = true; save();
   say("idle", "😺");
 }
+// конец мини-туториала автоспина (отдельный флаг — не сбрасывает tutDone)
+function autoTutEnd() {
+  TUT.active = false; TUT.step = null; TUT.force = null;
+  tutHide();
+  tutBlocks.style.display = "none";
+  S.autoTutDone = true; save();
+  say("idle", "😺");
+}
 function tutStart() {
   TUT.active = true;
   tutGoto("swipe1");
+}
+function startAutoTut() {
+  TUT.active = true;
+  tutGoto("autoReward");
 }
 window.addEventListener("resize", () => { if (TUT.active) tutRender(); });
 
@@ -1574,6 +1928,8 @@ function update() {
       ? `♻️ ПЕРЕРОЖДЕНИЕ → x${2 ** S.level}` + (ot > 0 ? ` · 🎁 перезрел ×${ot}` : "")
       : `перерождение · уровень ${S.level} · множитель x${global()}`;
 
+  // автоспин скрыт до 1-го перерождения (открывается наградой за престиж, v12)
+  autoBtn.style.display = S.autoUnlocked ? "" : "none";
   autoBtn.textContent = "автоспин: " + (S.auto ? "вкл" : "выкл") + " · 🐢 ×2 медленнее руки";
   autoBtn.classList.toggle("on", S.auto);
 
@@ -1591,6 +1947,9 @@ function update() {
     bH.textContent = `🪙 +50% к харде:  x${S.hardaMult} → x${S.hardaMult + .5}`;
     bH.disabled = S.harda < cost;
   }
+  // 🎬 ad-buy в окне прокачки — только когда не хватает харды и лимит не выбран
+  document.getElementById("upgAd").style.display =
+    (S.upgCount < UPG_MAX && S.harda < cost) ? "" : "none";
   // прогресс-бар прокачки в меню: фон кнопки заполняется по мере покупок 0..5
   const upgPct = S.upgCount / UPG_MAX * 100;
   document.getElementById("upgFill").style.width = upgPct + "%";
@@ -1605,6 +1964,8 @@ function update() {
   // гача открыта на галерее — обновить кнопки роллов (харда капает и автоспином)
   if (gachaOverlay.classList.contains("show") && !rolling && gachaGirl === null && !gachaSummary)
     renderGacha();
+  // магазин открыт — обновляем таймеры бустов (тикают раз в секунду через update)
+  if (shopOverlay.classList.contains("show")) renderShop();
   document.getElementById("stSpins").textContent = S.totalSpins;
   document.getElementById("stWon").textContent = fmt(S.totalWon);
 }
