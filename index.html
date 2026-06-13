@@ -64,6 +64,7 @@
     white-space: nowrap;
   }
   .bar .txt small { font-weight: 500; opacity: .85; }
+  .bar .txt .cur { font-size: 15px; line-height: 1; }
   .bar.flash { animation: barflash .5s; }
   @keyframes barflash { 0%,100% { box-shadow: none; } 50% { box-shadow: 0 0 0 3px #e8556d; } }
 
@@ -165,9 +166,9 @@
   /* магазин — жёлтый, гача — розовый */
   #shopBtn { background: #f5c518; color: #2a2306; }
   #collBtn { background: #ff5fa2; color: #fff; }
-  /* перерождение и автоспин выше «прокачки» (44px) в 1.33 → ~59px */
+  /* перерождение и автоспин заметно выше «прокачки/магазина/гачи» (~44px) — ~70px */
   #rebirthBtn {
-    position: relative; overflow: hidden; background: #2f3137; padding: 0; height: 59px;
+    position: relative; overflow: hidden; background: #2f3137; padding: 0; height: 70px;
   }
   #rebirthFill {
     position: absolute; inset: 0; width: 0%; background: #6f9a33;
@@ -187,8 +188,8 @@
   #upgBtn { position: relative; overflow: hidden; padding: 0; height: 44px; }
   #upgFill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: #e8556d; transition: width .35s ease; }
   #upgBtnTxt { position: relative; z-index: 1; line-height: 44px; }
-  /* автоспин и перерождение — одного размера (height 59px, текст по центру) */
-  #autoBtn { height: 59px; padding: 0 6px; display: flex; align-items: center; justify-content: center; }
+  /* автоспин и перерождение — одного размера (height 70px, текст по центру) */
+  #autoBtn { height: 70px; padding: 0 6px; display: flex; align-items: center; justify-content: center; }
   #autoBtn.on { background: #4db8e8; color: #082230; }
 
   footer {
@@ -283,6 +284,28 @@
     background: linear-gradient(135deg, #3a3322, #4a3d1f);
     box-shadow: 0 0 12px rgba(255,211,77,.55); color: #ffd34d; font-weight: 700;
   }
+
+  /* ── гача: навигация по страницам (стрелки + номер) ── */
+  .gnav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .gnavBtn {
+    border: none; border-radius: 8px; background: #3a3d46; color: #e8e8ea;
+    font-size: 18px; font-weight: 700; padding: 5px 16px; cursor: pointer; font-family: inherit;
+  }
+  .gnavBtn:active:not(:disabled) { transform: scale(.94); }
+  .gnavBtn:disabled { opacity: .25; cursor: default; }
+  .gnavLbl { font-size: 13px; font-weight: 800; color: #b9bac2; letter-spacing: .3px; }
+  /* страница-замок (следующая после текущей, ещё не открыта) */
+  .gachaLock { text-align: center; padding: 36px 12px; color: #8a8c96; font-size: 13px; line-height: 1.5; }
+  .gachaLock .lockico { font-size: 64px; margin-bottom: 12px; opacity: .8; }
+  /* итог мульти-ролла: горизонтальная авто-прокрутка карточек (~3 видно, медленный скролл) */
+  .galwrap { overflow: hidden; border-radius: 12px; background: #2a2c33; padding: 10px 0; margin-bottom: 10px; }
+  .galstrip { display: flex; gap: 8px; padding: 0 8px; width: max-content; will-change: transform; }
+  .galcard {
+    flex: none; width: 92px; background: #2f3137; border-radius: 10px; padding: 10px 4px;
+    text-align: center; font-size: 10px; color: #b9bac2; display: flex; flex-direction: column; gap: 2px;
+  }
+  .galcard .ce { font-size: 34px; line-height: 1.3; }
+  .galcard b { font-size: 11px; color: #e8e8ea; }
 
   /* ── гача-рулетка ── */
   .girl.sel, .gcard.sel { box-shadow: 0 0 0 2px #ffd34d, 0 0 16px #ffd34d; }
@@ -446,15 +469,15 @@
     <div id="bars">
       <div class="bar" id="spinsBar">
         <div class="fill c-spins" id="spinsFill"></div>
-        <div class="txt"><b>спины</b><span id="spinsVal">—</span></div>
+        <div class="txt"><b><span class="cur">🎲</span> спины</b><span id="spinsVal">—</span></div>
       </div>
       <div class="bar">
         <div class="fill c-harda" id="hardaFill"></div>
-        <div class="txt"><b>харда</b><span id="hardaVal">—</span></div>
+        <div class="txt"><b><span class="cur">🪙</span> харда</b><span id="hardaVal">—</span></div>
       </div>
       <div class="bar">
         <div class="fill c-exp" id="expFill"></div>
-        <div class="txt"><b>экспа</b><span id="expVal">—</span></div>
+        <div class="txt"><b><span class="cur">🧿</span> экспа</b><span id="expVal">—</span></div>
       </div>
     </div>
   </header>
@@ -599,7 +622,7 @@ const SYMS = [
 const WILD = SYMS.find(s => s.wild);
 const JACKPOT = SYMS.find(s => s.jackpot);
 const WSUM = SYMS.reduce((a, s) => a + s.w, 0);
-const REGEN_MS = 15000;          // 1 спин / 15 сек (прото; в проде медленнее)
+const REGEN_MS = 30000;          // 1 спин / 30 сек (прото, v13; в проде медленнее) — balance.md §2
 const SPINS_MAX = 50;            // v11: 100 → 50 (запрос автора) — balance.md §2
 const UPG_BASE = 400, UPG_RATIO = 1.4, UPG_MAX = 5;
 const GOALS = [5000, 15000, 40000, 100000, 250000];
@@ -622,16 +645,24 @@ const TURBO_T1 = 1.0, TURBO_T2 = 0.5;  // durMul: тир1 = рука, тир2 = 
 const WILD_STREAK = 10;                // спинов с принудительным ⚡ на 1-м барабане
 const SHOP_SPINS = 10;                 // «+10 спинов» — мгновенно
 const BUFF_MULT = 2;                   // «×2 харда+опыт» на 5 минут
-const GIRLS = [
-  { name: "Юки",  ava: "👩" },   { name: "Аска", ava: "👩‍🦰" },  { name: "Рин",    ava: "🧑‍🦰" },
-  { name: "Мика", ava: "👩‍🦱" }, { name: "Хана", ava: "🧑‍🦱" },  { name: "Сора",   ava: "👩‍🦳" },
-  { name: "Юмэ",  ava: "🧑‍🦳" }, { name: "Рэй",  ava: "👩‍🦲" },  { name: "Сакура", ava: "👱‍♀️" },
-];
+// девочки бесконечны (v13): страница = 9 девочек, имя/аватар генерятся по глобальному
+// индексу. Пулы разной длины → комбинации имя+аватар не повторяются на ранних страницах
+const GIRL_NAMES = ["Юки","Аска","Рин","Мика","Хана","Сора","Юмэ","Рэй","Сакура",
+  "Нана","Мэй","Аки","Юна","Кира","Эри","Мио","Рия","Нэко","Цуки","Хару","Кохана","Аянэ"];
+const GIRL_AVAS = ["👩","👩‍🦰","🧑‍🦰","👩‍🦱","🧑‍🦱","👩‍🦳","🧑‍🦳","👩‍🦲","👱‍♀️",
+  "👸","🧝‍♀️","🧚‍♀️","🦸‍♀️","🧜‍♀️","💃","🙋‍♀️","🧕","👰‍♀️"];
+const ROMAN = ["","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII"];
+const girl = gi => {
+  const base = GIRL_NAMES[gi % GIRL_NAMES.length];
+  const tier = Math.floor(gi / GIRL_NAMES.length); // повтор имени на дальних страницах → суффикс
+  return { name: tier ? base + " " + (ROMAN[tier] || (tier + 1)) : base,
+           ava: GIRL_AVAS[gi % GIRL_AVAS.length] };
+};
 
 /* ═══════════ состояние ═══════════ */
-const SAVE_V = 16;
+const SAVE_V = 17;
 // версия билда — мелким текстом в футере (см. разметку футера)
-const BUILD = "v12.2 · 2026-06-14";
+const BUILD = "v13 · 2026-06-14";
 // джекпот — символ 🎰 на барабанах: независимый ролл на каждый спин. ~0.015 →
 // 1 из ~67 спинов ≈ 3 мин ручной игры (быстрее на турбо = больше рекламы). balance.md §8
 const JACKPOT_P = 0.015;
@@ -640,7 +671,8 @@ const DEFAULTS = () => ({
   v: SAVE_V, spins: SPINS_MAX, harda: 0, exp: 0, level: 1,
   upgCount: 0, hardaMult: 1,
   lastRegen: Date.now(), totalSpins: 0, totalWon: 0, auto: false,
-  cards: GIRLS.map(() => Array(9).fill(0)), plat: GIRLS.map(() => false),
+  // одна страница (9 девочек) на старте; растут по мере открытия страниц (v13)
+  cards: Array.from({ length: 9 }, () => Array(9).fill(0)), plat: Array(9).fill(false),
   tutDone: false,
   // магазинные бусты (v11): таймеры-таймстемпы переживают перезагрузку в своём окне,
   // переживают перерождение (это «инапы», не ран-прогресс) — balance.md §7
@@ -719,9 +751,10 @@ function cloudInit(done) {
 }
 
 const global = () => 2 ** (S.level - 1);
-// платина: +5% к ЭКСПЕ за каждую девочку, АДДИТИВНО (1+0.05n, полная коллекция +45%),
-// бьёт по тройке экспы И пассивной экспе за крутку; переживает перерождение.
-// Харду НЕ множит — иначе снежный ком (balance.md §4a, решение 2026-06-13)
+// платина: +5% к ЭКСПЕ за каждую девочку, АДДИТИВНО (1+0.05n), бьёт по тройке экспы
+// И пассивной экспе за крутку; переживает перерождение. Харду НЕ множит — иначе
+// снежный ком (balance.md §4a). v13: девочки бесконечны → platMult растёт без капа,
+// это мета-ускоритель уровня (лечит «медленно набирающийся опыт» — запрос автора)
 const platMult = () => 1 + 0.05 * S.plat.filter(Boolean).length;
 // магазинные бусты (v11, balance.md §7): tempMult — временный ×2 к харде/экспе;
 // turboMul — durMul автоспина (тир1 = рука, тир2 вдвое быстрее), иначе медленный авто
@@ -795,12 +828,15 @@ function say(kind, face) {
 }
 setInterval(() => { if (!spinning && Math.random() < .25) say("idle"); }, 12000);
 
-// DEV-панель скрыта; раскрывается 5 тапами по морде маскота (v12, убрать перед релизом)
+// DEV-панель скрыта; 5 тапов по морде маскота ТОГГЛЯТ её (откр/закр) (v13, убрать перед релизом)
 let devTaps = 0;
 mface.addEventListener("click", () => {
   if (++devTaps < 5) return;
-  document.getElementById("devPanel").style.display = "flex";
-  bubble.textContent = "🛠 DEV-панель открыта";
+  devTaps = 0;
+  const dp = document.getElementById("devPanel");
+  const opening = dp.style.display === "none";
+  dp.style.display = opening ? "flex" : "none";
+  bubble.textContent = opening ? "🛠 DEV-панель открыта" : "🛠 DEV-панель скрыта";
   mface.classList.remove("pop"); void mface.offsetWidth; mface.classList.add("pop");
 });
 
@@ -1309,7 +1345,7 @@ document.getElementById("rebirthBtn").addEventListener("click", () => {
   document.getElementById("rbInfo").textContent =
     `Экспа: ${fmt(S.exp)} / ${fmt(goal())}. ` +
     (S.exp >= goal() ? (t ? `Перезрел ×${t}!` : "Готово к перерождению!") : "Пока не хватает.");
-  document.getElementById("rbMult").textContent = "x" + 2 ** S.level;
+  document.getElementById("rbMult").textContent = "x" + fmt(2 ** S.level);
   // перезрел: можно не жать сразу — экспа сверх цели копится в стартовую харду
   document.getElementById("rbOver").textContent = t > 0
     ? `🎁 Перезрел ×${t}: начнёшь следующий ран с хардой на ${t} ролл${t === 1 ? "" : "а"} гачи` +
@@ -1359,36 +1395,83 @@ const gachaRoll = document.getElementById("gachaRoll"), gachaLog = document.getE
 const gachaMulti = document.getElementById("gachaMulti");
 const gachaAd = document.getElementById("gachaAd");
 const gachaBack = document.getElementById("gachaBack");
-let gachaGirl = null;    // null = галерея, число = страница девочки
+let gachaGirl = null;    // null = галерея страницы, число = глобальный индекс девочки (её карточки)
+let gachaPage = 0;       // какую страницу (9 девочек) смотрим; стрелки ◀▶ переключают (v13)
 let gachaSummary = null; // итоги мульти-ролла — показываются вместо галереи
 let rolling = false;     // идёт рулетка — навигация и кнопки заморожены
 
+/* страницы гачи (v13): страница p = девочки [p*9 .. p*9+8]. Страница «собрана»,
+   когда у всех 9 девочек есть платина. Открытых страниц = собранные + 1 текущая;
+   следующая за текущей — замок; дальше перейти нельзя. balance.md §4a */
+function ensureGirl(gi) {
+  if (!S.cards[gi]) S.cards[gi] = Array(9).fill(0);
+  if (S.plat[gi] == null) S.plat[gi] = false; // без ?? — компат со старыми webview
+}
+function ensurePage(p) { for (let g = p * 9; g < p * 9 + 9; g++) ensureGirl(g); }
+function pageComplete(p) {
+  for (let g = p * 9; g < p * 9 + 9; g++) if (!S.plat[g]) return false;
+  return true;
+}
+// текущая (последняя «настоящая») страница = первая несобранная; крутится только на ней
+function inProgressPage() { let p = 0; while (pageComplete(p)) p++; return p; }
+function gnavHtml(page, left, right) {
+  return `<div class="gnav">
+    <button class="gnavBtn" data-nav="-1"${left ? "" : " disabled"}>◀</button>
+    <span class="gnavLbl">Страница ${page + 1}</span>
+    <button class="gnavBtn" data-nav="1"${right ? "" : " disabled"}>▶</button>
+  </div>`;
+}
+
 function renderGacha() {
+  if (galRAF && !gachaSummary) { cancelAnimationFrame(galRAF); galRAF = null; } // стоп авто-скролл вне итогов
   if (gachaSummary) { renderGachaSummary(); return; }
   if (gachaGirl === null) {
+    const inProg = inProgressPage();
+    const lockPage = inProg + 1;
+    if (gachaPage > lockPage) gachaPage = lockPage;
+    if (gachaPage < 0) gachaPage = 0;
     gachaTitle.textContent = "Гача 💖";
-    gachaBody.innerHTML = `<div class="ggrid">` + GIRLS.map((girl, i) => {
-      const owned = S.cards[i].filter(n => n > 0).length;
-      return `<div class="girl${S.plat[i] ? " done" : ""}" data-g="${i}">
-        <div class="gava">${girl.ava}</div><div>${girl.name}</div>
-        <div class="gprog">${S.plat[i] ? "⭐ 10/10" : owned + "/9"}</div></div>`;
-    }).join("") + `</div>`;
-    const cost = rollCost(), k = Math.min(MULTI_MAX, Math.floor(S.harda / cost));
-    gachaRoll.style.display = "";
-    gachaRoll.textContent = `РОЛЛ — ${fmt(cost)} 🪙`;
-    gachaRoll.disabled = rolling || k < 1;
-    // мигание: хватает ровно на один — мигает РОЛЛ; на несколько — мигает мульти
-    gachaRoll.classList.toggle("blink", !rolling && k === 1);
-    gachaMulti.style.display = k >= 2 ? "" : "none";
-    gachaMulti.textContent = `КУПИТЬ ЗА ${fmt(k * cost)} 🪙 — ${k} роллов`;
-    gachaMulti.disabled = rolling;
-    gachaMulti.classList.toggle("blink", !rolling && k >= 2);
-    // не хватает даже на 1 ролл → 🎬 реклама даёт ролл бесплатно (тест)
-    gachaAd.style.display = !rolling && k < 1 ? "" : "none";
+    const navLeft = gachaPage > 0, navRight = gachaPage < lockPage;
+    // страница-замок: следующая за текущей, ещё не открыта
+    if (gachaPage === lockPage) {
+      gachaBody.innerHTML = gnavHtml(gachaPage, navLeft, navRight) +
+        `<div class="gachaLock"><div class="lockico">🔒</div>
+          Собери всех девочек страницы ${inProg + 1} — и здесь откроются новые ✨</div>`;
+      gachaRoll.style.display = "none"; gachaMulti.style.display = "none"; gachaAd.style.display = "none";
+      gachaBack.textContent = "закрыть";
+      return;
+    }
+    ensurePage(gachaPage);
+    gachaBody.innerHTML = gnavHtml(gachaPage, navLeft, navRight) + `<div class="ggrid">` +
+      Array.from({ length: 9 }, (_, slot) => {
+        const i = gachaPage * 9 + slot, gd = girl(i);
+        const owned = S.cards[i].filter(n => n > 0).length;
+        return `<div class="girl${S.plat[i] ? " done" : ""}" data-g="${i}">
+          <div class="gava">${gd.ava}</div><div>${gd.name}</div>
+          <div class="gprog">${S.plat[i] ? "⭐ 10/10" : owned + "/9"}</div></div>`;
+      }).join("") + `</div>`;
+    // крутить можно ТОЛЬКО на текущей странице — на собранных кнопки нет (не фармить спины)
+    const onActive = gachaPage === inProg;
+    const cost = rollCost(), k = onActive ? Math.min(MULTI_MAX, Math.floor(S.harda / cost)) : 0;
+    if (onActive) {
+      gachaRoll.style.display = "";
+      gachaRoll.textContent = `РОЛЛ — ${fmt(cost)} 🪙`;
+      gachaRoll.disabled = rolling || k < 1;
+      // мигание: хватает ровно на один — мигает РОЛЛ; на несколько — мигает мульти
+      gachaRoll.classList.toggle("blink", !rolling && k === 1);
+      gachaMulti.style.display = k >= 2 ? "" : "none";
+      gachaMulti.textContent = `КУПИТЬ ЗА ${fmt(k * cost)} 🪙 — ${k} роллов`;
+      gachaMulti.disabled = rolling;
+      gachaMulti.classList.toggle("blink", !rolling && k >= 2);
+      // не хватает даже на 1 ролл → 🎬 реклама даёт ролл бесплатно (тест)
+      gachaAd.style.display = !rolling && k < 1 ? "" : "none";
+    } else {
+      gachaRoll.style.display = "none"; gachaMulti.style.display = "none"; gachaAd.style.display = "none";
+    }
     gachaBack.textContent = "закрыть";
   } else {
     const i = gachaGirl;
-    gachaTitle.textContent = GIRLS[i].ava + " " + GIRLS[i].name;
+    gachaTitle.textContent = girl(i).ava + " " + girl(i).name;
     let html = `<div class="cgrid">`;
     for (let c = 0; c < 9; c++) {
       const cnt = S.cards[i][c];
@@ -1397,7 +1480,7 @@ function renderGacha() {
         : `<div class="gcard no"><div class="ce">❓</div>изобр. ${c + 1}</div>`;
     }
     html += S.plat[i]
-      ? `<div class="gcard gplat"><div class="ce">${PLAT_EMOJI[i]}</div>ПЛАТИНОВАЯ КАРТОЧКА · ВИДЕО · экспа +5% навсегда</div>`
+      ? `<div class="gcard gplat"><div class="ce">${PLAT_EMOJI[i % PLAT_EMOJI.length]}</div>ПЛАТИНОВАЯ КАРТОЧКА · ВИДЕО · экспа +5% навсегда</div>`
       : `<div class="gcard gplat no"><div class="ce">🔒</div>собери все 9 — платиновая карточка: экспа +5% навсегда</div>`;
     gachaBody.innerHTML = html + `</div>`;
     gachaRoll.style.display = "none";
@@ -1407,19 +1490,25 @@ function renderGacha() {
   }
 }
 
-// итоговое окно мульти-ролла: кого открыли, дубли → спины, платины
+// итоговое окно мульти-ролла: открытые карточки — горизонтальной авто-прокручиваемой
+// галереей (~3 видно, медленный скролл влево-вправо — все картинки можно рассмотреть);
+// плюс платины и обмен дублей на спины. balance.md §4a, feel.md §8a
+let galRAF = null;
 function renderGachaSummary() {
   const s = gachaSummary;
   gachaTitle.textContent = `Итоги — ${s.rolls} роллов 💖`;
   let html = "";
-  GIRLS.forEach((girl, i) => {
-    const news = s.newCards[i];
-    if (news.length) html += `<div class="sumrow">${girl.ava} <b>${girl.name}</b> — новые: ` +
-      news.map(c => `${cardEmoji(i, c)} изобр. ${c + 1}`).join(", ") + `</div>`;
-  });
-  if (!html) html = `<div class="sumrow">новых карточек нет 😿 сплошные дубли</div>`;
+  if (s.newCards.length) {
+    const cards = s.newCards.map(({ g, c }) =>
+      `<div class="galcard"><div class="ce">${cardEmoji(g, c)}</div>
+        <b>${girl(g).name}</b><span>изобр. ${c + 1}</span></div>`).join("");
+    html += `<div class="galwrap"><div class="galstrip" id="galStrip">${cards}</div></div>`;
+    html += `<div class="sumrow">🎉 Новых карточек: <b>${s.newCards.length}</b></div>`;
+  } else {
+    html += `<div class="sumrow">новых карточек нет 😿 сплошные дубли</div>`;
+  }
   s.plats.forEach(g =>
-    html += `<div class="sumrow plat">⭐ ПЛАТИНА: ${GIRLS[g].name}! Экспа +5% навсегда</div>`);
+    html += `<div class="sumrow plat">⭐ ПЛАТИНА: ${girl(g).name}! Экспа +5% навсегда</div>`);
   html += `<div class="sumrow">💥 Дубли: ${s.dupes}` +
     (s.dupes ? ` → обменяны на <b>+${s.spinsGained} 🎲 спинов</b>` +
       (s.spinsBurned ? ` <small>(${s.spinsBurned} сгорело — бак был полон)</small>` : "")
@@ -1430,6 +1519,27 @@ function renderGachaSummary() {
   gachaMulti.style.display = "none";
   gachaAd.style.display = "none";
   gachaBack.textContent = "ок";
+  if (s.newCards.length) startGalleryScroll();
+}
+// медленный пинг-понг-скролл ленты карточек: справа-налево и обратно, чтобы все
+// картинки можно было рассмотреть (если всё влезло — скролл не нужен)
+function startGalleryScroll() {
+  if (galRAF) { cancelAnimationFrame(galRAF); galRAF = null; }
+  requestAnimationFrame(() => {
+    const strip = document.getElementById("galStrip");
+    if (!strip) return;
+    const max = strip.scrollWidth - strip.parentElement.clientWidth;
+    if (max <= 0) return;
+    let x = 0, dir = -1, last = performance.now();
+    const SPEED = 42; // px/сек — медленно
+    (function f(now) {
+      const dt = Math.min(50, now - last) / 1000; last = now;
+      x += dir * SPEED * dt;
+      if (x <= -max) { x = -max; dir = 1; } else if (x >= 0) { x = 0; dir = -1; }
+      strip.style.transform = `translateX(${x}px)`;
+      galRAF = requestAnimationFrame(f);
+    })(last);
+  });
 }
 
 // рулетка: рамка цвета прогрева бежит по элементам слева-направо сверху-вниз,
@@ -1486,7 +1596,7 @@ function revealCard(g, c, cell) {
     vibrate(30);
     if (S.cards[g].every(n => n > 0)) {
       S.plat[g] = true;
-      gachaLog.textContent = `⭐ ПЛАТИНОВАЯ КАРТОЧКА: ${GIRLS[g].name}! Экспа +5% навсегда!`;
+      gachaLog.textContent = `⭐ ПЛАТИНОВАЯ КАРТОЧКА: ${girl(g).name}! Экспа +5% навсегда!`;
       bigCelebrate(); emojiBurst("⭐", 24, true);
     } else {
       gachaLog.textContent = `🎉 НОВАЯ: «изобр. ${c + 1}» ${cardEmoji(g, c)}`;
@@ -1494,19 +1604,26 @@ function revealCard(g, c, cell) {
   }
   update(); save();
   setTimeout(() => {
-    rolling = false; renderGacha();
+    rolling = false;
+    // страница собрана этим роллом → текущей становится следующая, чтобы крутить дальше
+    if (pageComplete(Math.floor(g / 9))) gachaPage = inProgressPage();
+    renderGacha();
     if (TUT.step === "gachaRoll") tutGoto("gachaClose");
   }, 900); // дать анимации доиграть
 }
 
 document.getElementById("collBtn").addEventListener("click", () => {
   if (rolling) return;
-  gachaGirl = null; gachaLog.textContent = "";
+  // при открытии — всегда текущая страница (не первая и не замок) — balance.md §4a
+  gachaGirl = null; gachaSummary = null; gachaPage = inProgressPage(); gachaLog.textContent = "";
   renderGacha(); gachaOverlay.classList.add("show");
   if (TUT.step === "gachaOpen") tutGoto("gachaRoll");
 });
 gachaBody.addEventListener("click", e => {
   if (rolling || gachaSummary) return;
+  // стрелки ◀▶ — листание страниц девочек
+  const nav = e.target.closest(".gnavBtn");
+  if (nav) { if (!nav.disabled) { gachaPage += +nav.dataset.nav; renderGacha(); } return; }
   const t = e.target.closest(".girl");
   if (!t) return;
   gachaGirl = +t.dataset.g; gachaLog.textContent = "";
@@ -1514,11 +1631,12 @@ gachaBody.addEventListener("click", e => {
 });
 gachaBack.addEventListener("click", () => {
   if (rolling) return;
-  if (gachaSummary) { gachaSummary = null; renderGacha(); return; }
+  if (gachaSummary) { gachaSummary = null; gachaPage = inProgressPage(); renderGacha(); return; }
   if (gachaGirl !== null) {
     gachaGirl = null; gachaLog.textContent = ""; renderGacha();
     if (TUT.step === "gachaClose") tutGoto("gachaClose"); // переметить кнопку («закрыть»)
   } else {
+    if (galRAF) { cancelAnimationFrame(galRAF); galRAF = null; }
     gachaOverlay.classList.remove("show");
     if (TUT.step === "gachaClose") tutGoto("swipe3");
   }
@@ -1529,12 +1647,18 @@ function runRoll(burstEmoji, burstEl) {
   gachaLog.textContent = "";
   emojiBurst(burstEmoji, 8, false, burstEl); // VFX нажатия
   if (TUT.active) tutHide();                 // рулетку видно без темноты
+  // крутим всегда на текущей странице (ролл доступен только на ней)
+  const page = inProgressPage();
+  ensurePage(page);
+  gachaPage = page; gachaGirl = null;
   renderGacha(); // перерисовать с задизейбленной кнопкой и чистыми подсветками
   update(); save();
-  // исход решается до анимации, рулетки — презентация (принцип feel.md №1)
-  const g = Math.floor(Math.random() * 9), c = Math.floor(Math.random() * 9);
+  // исход решается до анимации, рулетки — презентация (принцип feel.md №1).
+  // slot — позиция девочки на странице (0..8), g — её глобальный индекс
+  const slot = Math.floor(Math.random() * 9), c = Math.floor(Math.random() * 9);
+  const g = page * 9 + slot;
   const tiles = [...gachaBody.querySelectorAll(".girl")];
-  roulette(tiles, g, 3, tile => {
+  roulette(tiles, slot, 3, tile => {
     sThud(); vibrate([30, 30, 60]);
     tile.classList.add("winflash"); // импакт: выигранная девочка мигает
     setTimeout(() => {
@@ -1546,7 +1670,7 @@ function runRoll(burstEmoji, burstEl) {
   });
 }
 gachaRoll.addEventListener("click", () => {
-  if (rolling || gachaGirl !== null || S.harda < rollCost()) return;
+  if (rolling || gachaGirl !== null || gachaPage !== inProgressPage() || S.harda < rollCost()) return;
   S.harda -= rollCost();
   runRoll("💖", gachaRoll);
 });
@@ -1560,26 +1684,32 @@ gachaAd.addEventListener("click", () => {
 // монтаж ~2.5с НЕ зависит от k, потом итоговое окно — вместо k скликиваний
 gachaMulti.addEventListener("click", () => {
   const cost = rollCost(), k = Math.min(MULTI_MAX, Math.floor(S.harda / cost));
-  if (rolling || gachaGirl !== null || k < 2) return;
+  if (rolling || gachaGirl !== null || gachaPage !== inProgressPage() || k < 2) return;
   S.harda -= k * cost;
   rolling = true;
   gachaLog.textContent = "";
   emojiBurst("💖", 16, true, gachaMulti);
   renderGacha(); update();
-  // все исходы и выплаты применяются сразу (кап спинов — в порядке роллов)
-  const sum = { rolls: k, spent: k * cost, newCards: GIRLS.map(() => []),
+  // все исходы и выплаты применяются сразу (кап спинов — в порядке роллов).
+  // newCards — плоский список {g, c} (для пролистывающейся галереи итогов, v13).
+  // Собрав страницу, ролл переходит на следующую (иначе остаток роллов — дубли)
+  const sum = { rolls: k, spent: k * cost, newCards: [],
                 dupes: 0, spinsGained: 0, spinsBurned: 0, plats: [] };
+  let page = inProgressPage();
+  ensurePage(page);
   for (let i = 0; i < k; i++) {
-    const g = Math.floor(Math.random() * 9), c = Math.floor(Math.random() * 9);
+    while (pageComplete(page)) { page++; ensurePage(page); } // страница собрана → следующая
+    const g = page * 9 + Math.floor(Math.random() * 9), c = Math.floor(Math.random() * 9);
     if (S.cards[g][c] > 0) {
       S.cards[g][c]++; sum.dupes++;
       const credited = Math.min(DUPE_SPINS, SPINS_MAX - S.spins);
       S.spins += credited; sum.spinsGained += credited; sum.spinsBurned += DUPE_SPINS - credited;
     } else {
-      S.cards[g][c] = 1; sum.newCards[g].push(c);
+      S.cards[g][c] = 1; sum.newCards.push({ g, c });
       if (S.cards[g].every(n => n > 0)) { S.plat[g] = true; sum.plats.push(g); }
     }
   }
+  gachaPage = inProgressPage();
   save();
   // монтаж: золотая рамка строчит по девочкам с ускорением, бёрсты по пути,
   // финальный удар (фанфара+конфетти+тряска) — и итоговое окно
@@ -1992,8 +2122,8 @@ function update() {
   const ot = overTiers();
   document.getElementById("rebirthTxt").textContent =
     S.exp >= goal()
-      ? `♻️ ПЕРЕРОЖДЕНИЕ → x${2 ** S.level}` + (ot > 0 ? ` · 🎁 перезрел ×${ot}` : "")
-      : `перерождение · уровень ${S.level} · множитель x${global()}`;
+      ? `♻️ ПЕРЕРОЖДЕНИЕ → x${fmt(2 ** S.level)}` + (ot > 0 ? ` · 🎁 перезрел ×${ot}` : "")
+      : `перерождение · уровень ${S.level} · множитель x${fmt(global())}`;
 
   // автоспин скрыт до 1-го перерождения (открывается наградой за престиж, v12)
   autoBtn.style.display = S.autoUnlocked ? "" : "none";
