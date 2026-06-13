@@ -180,6 +180,7 @@
     text-align: center; font-size: 10.5px; color: #6f717a; padding-bottom: 4px;
   }
   footer a { color: #6f717a; }
+  #buildVer { margin-top: 2px; font-size: 9px; color: #4a4c54; letter-spacing: .3px; }
 
   /* ═══ DEV-ПАНЕЛЬ — УДАЛИТЬ ПЕРЕД РЕЛИЗОМ (этот CSS + блок #devPanel в разметке + обработчики в JS) ═══ */
   #devPanel {
@@ -407,6 +408,7 @@
   <footer>
     спинов: <span id="stSpins">0</span> · выиграно: <span id="stWon">0</span> ·
     прото-баланс ускорен · <a href="#" id="resetLink">сброс</a>
+    <div id="buildVer"></div>
   </footer>
 
   <!-- ═══ DEV-ПАНЕЛЬ — УДАЛИТЬ ПЕРЕД РЕЛИЗОМ (этот блок + #devPanel в CSS + секция «dev-кнопки» в JS) ═══ -->
@@ -469,19 +471,18 @@
 const CELL = 78, PAD = (170 - CELL) / 2;
 // иконки — эмодзи: index.html открывается с диска/телефона без сервера (решение 2026-06-12)
 const SYMS = [
-  { id: "harda", emoji: "🪙", w: 50, pay: 200  },
-  { id: "exp",   emoji: "🧿", w: 27, pay: 1000 },
-  { id: "spins", emoji: "🎲", w: 23, pay: 10   },
+  { id: "harda", emoji: "🪙", w: 52, pay: 200  },
+  { id: "exp",   emoji: "🧿", w: 33, pay: 1000 },
+  { id: "spins", emoji: "🎲", w: 15, pay: 10   },
 ];
 const WSUM = SYMS.reduce((a, s) => a + s.w, 0);
 const REGEN_MS = 15000;          // 1 спин / 15 сек (прото; в проде медленнее)
 const SPINS_MAX = 100;
 const UPG_BASE = 400, UPG_RATIO = 1.4, UPG_MAX = 5;
 const GOALS = [5000, 15000, 40000, 100000, 250000];
-// пассивная экспа за каждый спин (≈38% от EV троек) — бар перерождения ползёт
-// заметно каждый спин, мёртвого хвоста нет; усилено 4→12 (плейтест до L14,
-// хвост рана был мёртвый) — balance.md §4
-const EXP_PASSIVE = 12;
+// пассивная экспа за каждый спин (~66% потока экспы) — цель: уровень ~раз в 2 мин
+// вручную (~47 спинов на цель L1). Усилено 12→70 (v8, запрос автора) — balance.md §4
+const EXP_PASSIVE = 70;
 // «перезрел»: экспа сверх цели → тиры (каждые +50% цели, макс 4), при перерождении
 // тир × цена ролла нового уровня стартовой хардой — «жать сейчас или пожирнее»
 const OVER_STEP = .5, OVER_MAX = 4;
@@ -499,7 +500,9 @@ const GIRLS = [
 ];
 
 /* ═══════════ состояние ═══════════ */
-const SAVE_V = 11;
+const SAVE_V = 12;
+// версия билда — мелким текстом в футере (см. разметку футера)
+const BUILD = "v8 · 2026-06-13";
 // DEFAULTS — фабрика: cards/plat — массивы, общие ссылки между ранами недопустимы
 const DEFAULTS = () => ({
   v: SAVE_V, spins: SPINS_MAX, harda: 0, exp: 0, level: 1,
@@ -1604,6 +1607,7 @@ function update() {
   document.getElementById("stWon").textContent = fmt(S.totalWon);
 }
 
+document.getElementById("buildVer").textContent = "build " + BUILD;
 regen(); update();
 if (tg) {                                  // Telegram Mini App: на весь экран, свайп-вниз не закрывает (мешал бы рычагу)
   tg.ready(); tg.expand();
