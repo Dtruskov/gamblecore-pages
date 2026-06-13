@@ -500,9 +500,9 @@ const GIRLS = [
 ];
 
 /* ═══════════ состояние ═══════════ */
-const SAVE_V = 12;
+const SAVE_V = 13;
 // версия билда — мелким текстом в футере (см. разметку футера)
-const BUILD = "v8.1 · 2026-06-13";
+const BUILD = "v9 · 2026-06-13";
 // DEFAULTS — фабрика: cards/plat — массивы, общие ссылки между ранами недопустимы
 const DEFAULTS = () => ({
   v: SAVE_V, spins: SPINS_MAX, harda: 0, exp: 0, level: 1,
@@ -580,7 +580,10 @@ function cloudInit(done) {
 }
 
 const global = () => 2 ** (S.level - 1);
-const platMult = () => 2 ** S.plat.filter(Boolean).length; // платиновые карточки гачи: ×2 навсегда, как перерождение
+// платина: +50% к ЭКСПЕ за каждую девочку, АДДИТИВНО (1+0.5n, полная коллекция ×5.5),
+// переживает перерождение. Харду НЕ множит — иначе снежный ком: больше платин →
+// больше харды → больше роллов → больше платин (balance.md §4a, решение 2026-06-13)
+const platMult = () => 1 + 0.5 * S.plat.filter(Boolean).length;
 // без оператора ?? — он требует Chrome 80+ и валит парсинг скрипта на старых
 // webview (игра не открывалась на части устройств), всё дальше тоже мёртвое
 const goal = () => { const g = GOALS[S.level - 1]; return g != null ? g : GOALS[GOALS.length - 1] * 2.5 ** (S.level - GOALS.length); };
@@ -886,7 +889,7 @@ function evaluate() {
   reels.forEach(r => r.strip.children[r.center].classList.add("hit"));
 
   if (sym.id === "harda") {
-    const amt = Math.round(sym.pay * g * S.hardaMult * platMult());
+    const amt = Math.round(sym.pay * g * S.hardaMult); // платина харду НЕ множит — валюта гачи, иначе снежный ком
     S.harda += amt; S.totalWon += amt;
     winCount("WIN +", amt, " харды");
     goldFlash();
@@ -1117,8 +1120,8 @@ document.getElementById("rbGo").addEventListener("click", () => {
 /* ═══════════ гача-коллекция ═══════════ */
 // ролл без выбора (решение 2026-06-12 v2): рулетка сначала выбирает девочку (1/9),
 // потом её карточку (1/9) — равномерно 1/81. Дубль — эффект DOUBLE и утешительные
-// спины (кап жёсткий), не харда. Полный сет → платиновая: ×2 к тройкам харды/экспы
-// НАВСЕГДА (переживает перерождение, как global). balance.md §4a
+// спины (кап жёсткий), не харда. Полный сет → платиновая: +50% к экспе НАВСЕГДА
+// (аддитивно, переживает перерождение; харду НЕ трогает). balance.md §4a
 const rollCost = () => Math.round(GACHA_COST * GACHA_RATIO ** (S.level - 1));
 const DUPE_SPINS = 10;
 // эмодзи карточек — детерминированные «рандомные»: внутри девочки не повторяются
@@ -1169,8 +1172,8 @@ function renderGacha() {
         : `<div class="gcard no"><div class="ce">❓</div>изобр. ${c + 1}</div>`;
     }
     html += S.plat[i]
-      ? `<div class="gcard gplat"><div class="ce">${PLAT_EMOJI[i]}</div>ПЛАТИНОВАЯ КАРТОЧКА · ВИДЕО · рейты ×2 навсегда</div>`
-      : `<div class="gcard gplat no"><div class="ce">🔒</div>собери все 9 — платиновая карточка: рейты ×2 навсегда</div>`;
+      ? `<div class="gcard gplat"><div class="ce">${PLAT_EMOJI[i]}</div>ПЛАТИНОВАЯ КАРТОЧКА · ВИДЕО · экспа +50% навсегда</div>`
+      : `<div class="gcard gplat no"><div class="ce">🔒</div>собери все 9 — платиновая карточка: экспа +50% навсегда</div>`;
     gachaBody.innerHTML = html + `</div>`;
     gachaRoll.style.display = "none";
     gachaMulti.style.display = "none";
@@ -1190,7 +1193,7 @@ function renderGachaSummary() {
   });
   if (!html) html = `<div class="sumrow">новых карточек нет 😿 сплошные дубли</div>`;
   s.plats.forEach(g =>
-    html += `<div class="sumrow plat">⭐ ПЛАТИНА: ${GIRLS[g].name}! Рейты ×2 навсегда</div>`);
+    html += `<div class="sumrow plat">⭐ ПЛАТИНА: ${GIRLS[g].name}! Экспа +50% навсегда</div>`);
   html += `<div class="sumrow">💥 Дубли: ${s.dupes}` +
     (s.dupes ? ` → обменяны на <b>+${s.spinsGained} 🎲 спинов</b>` +
       (s.spinsBurned ? ` <small>(${s.spinsBurned} сгорело — бак был полон)</small>` : "")
@@ -1256,7 +1259,7 @@ function revealCard(g, c, cell) {
     vibrate(30);
     if (S.cards[g].every(n => n > 0)) {
       S.plat[g] = true;
-      gachaLog.textContent = `⭐ ПЛАТИНОВАЯ КАРТОЧКА: ${GIRLS[g].name}! Рейты ×2 навсегда!`;
+      gachaLog.textContent = `⭐ ПЛАТИНОВАЯ КАРТОЧКА: ${GIRLS[g].name}! Экспа +50% навсегда!`;
       bigCelebrate(); emojiBurst("⭐", 24, true);
     } else {
       gachaLog.textContent = `🎉 НОВАЯ: «изобр. ${c + 1}» ${cardEmoji(g, c)}`;
@@ -1458,7 +1461,7 @@ function tutRender() {
       TUT.force = null;
       // тутор продаёт ЗАЧЕМ, не только КУДА (плейтест: «тутор на гачу не понял»)
       tutShow(document.getElementById("collBtn"),
-        "Хватает на ролл гачи! Собери 9 карточек девочки — её платина даст ×2 НАВСЕГДА",
+        "Хватает на ролл гачи! Собери 9 карточек девочки — её платина даст +50% к экспе НАВСЕГДА",
         { paw: true });
       break;
     case "gachaRoll":
@@ -1467,7 +1470,7 @@ function tutRender() {
       break;
     case "gachaClose":
       tutShow(gachaBack,
-        "Карточка твоя — первая из 9! Полный сет = платина ×2 навсегда. Возвращайся к слоту");
+        "Карточка твоя — первая из 9! Полный сет = платина +50% к экспе навсегда. Возвращайся к слоту");
       break;
     case "swipe3":
       TUT.force = "spins";
