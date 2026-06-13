@@ -440,6 +440,20 @@
     border: none; background: none; cursor: pointer; font-family: inherit;
     color: #caa94e; font-size: 12px; padding: 4px; text-decoration: underline;
   }
+  /* убывающий таймер-бар: «успей забрать, пока не закрылось» */
+  .jptimer {
+    position: relative; height: 22px; border-radius: 11px; overflow: hidden;
+    background: #2a2008; box-shadow: inset 0 1px 3px rgba(0,0,0,.5);
+  }
+  .jptimerfill {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 100%;
+    background: linear-gradient(90deg, #ff5f4d, #ffd34d);
+  }
+  .jptimertxt {
+    position: relative; z-index: 1; display: flex; align-items: center;
+    justify-content: center; height: 100%; font-weight: 900; font-size: 13px;
+    color: #2a1500; text-shadow: 0 1px 1px rgba(255,255,255,.35);
+  }
 
   /* ── winline: прошлый вин висит, пока крутятся барабаны; тускнеет при проигрыше ── */
   #winline { transition: opacity .3s, filter .3s; }
@@ -601,6 +615,7 @@
   <div class="sheet jpsheet">
     <div class="jptitle">💰 ДЖЕКПОТ! 💰</div>
     <div class="jpdesc" id="jpDesc">—</div>
+    <div class="jptimer"><div class="jptimerfill" id="jpTimerFill"></div><span class="jptimertxt" id="jpTimerTxt">5с</span></div>
     <button class="jpclaim" id="jpClaim">🎬 ЗАБРАТЬ ДЖЕКПОТ</button>
     <button class="jpclose" id="jpClose">закрыть</button>
   </div>
@@ -676,6 +691,8 @@ const BUILD = "v13 · 2026-06-14";
 // джекпот — символ 🎰 на барабанах: независимый ролл на каждый спин. ~0.015 →
 // 1 из ~67 спинов ≈ 3 мин ручной игры (быстрее на турбо = больше рекламы). balance.md §8
 const JACKPOT_P = 0.015;
+// окно джекпота живёт 5с (виден убывающий таймер-бар, v13) — потом само закрывается
+const JACKPOT_MS = 5000;
 // DEFAULTS — фабрика: cards/plat — массивы, общие ссылки между ранами недопустимы
 const DEFAULTS = () => ({
   v: SAVE_V, spins: SPINS_MAX, harda: 0, exp: 0, level: 1,
@@ -1942,23 +1959,40 @@ function jackpotVFXStop() {
   clearInterval(jpVfxTimer); jpVfxTimer = null;
   jpVfx.innerHTML = "";
 }
+// убывающий таймер-бар окна: ширина 100→0% за JACKPOT_MS + число секунд («успей забрать»)
+let jpCountRAF = null;
+function startJpCountdown() {
+  stopJpCountdown();
+  const fill = document.getElementById("jpTimerFill"), txt = document.getElementById("jpTimerTxt");
+  const t0 = performance.now();
+  (function f(now) {
+    const left = Math.max(0, JACKPOT_MS - (now - t0));
+    fill.style.width = (left / JACKPOT_MS * 100) + "%";
+    txt.textContent = Math.ceil(left / 1000) + "с";
+    if (left > 0) jpCountRAF = requestAnimationFrame(f); else jpCountRAF = null;
+  })(t0);
+}
+function stopJpCountdown() { if (jpCountRAF) { cancelAnimationFrame(jpCountRAF); jpCountRAF = null; } }
 function showJackpot() {
   jpPending = jackpotReward();
   jpDesc.textContent = `За рекламу: +${fmt(jpPending.harda)} 🪙  +${fmt(jpPending.exp)} 🧿  +${jpPending.spins} 🎲`;
   jackpotOverlay.classList.add("show");
   jackpotAttention();
   jackpotVFXStart();
+  startJpCountdown();
   clearTimeout(jpTimer);
-  jpTimer = setTimeout(closeJackpot, 5000); // окно живёт 5 секунд, потом само закрывается
+  jpTimer = setTimeout(closeJackpot, JACKPOT_MS); // окно живёт JACKPOT_MS, потом само закрывается
 }
 function closeJackpot() {
   clearTimeout(jpTimer);
+  stopJpCountdown();
   jackpotVFXStop();
   jackpotOverlay.classList.remove("show");
   jackpotLanded = false;           // слот снова можно крутить
 }
 function claimJackpot() {           // 🎬 реклама (заглушка) → насыпать награду
   clearTimeout(jpTimer);
+  stopJpCountdown();
   jackpotVFXStop();
   const r = jpPending || jackpotReward();
   S.harda += r.harda; S.totalWon += r.harda;
