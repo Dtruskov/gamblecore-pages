@@ -127,6 +127,22 @@
   }
   @keyframes floatup { 0% { opacity: 0; transform: translate(-50%, 8px); }
     20% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -34px); } }
+  /* крупный текст выигрыша поверх слота (v13.5): «что и сколько» — часть VFX, изобильнее */
+  .bigwin {
+    position: fixed; pointer-events: none; z-index: 19;
+    font-weight: 900; white-space: nowrap; letter-spacing: .5px; text-align: center;
+    font-size: clamp(30px, 9vw, 52px);
+    text-shadow: 0 3px 0 rgba(0,0,0,.45), 0 0 24px currentColor;
+    -webkit-text-stroke: 1px rgba(0,0,0,.3);
+    animation: bigwinpop 1.4s cubic-bezier(.2,1.5,.35,1) forwards;
+  }
+  @keyframes bigwinpop {
+    0%   { opacity: 0; transform: translate(-50%,-50%) scale(.3) rotate(-6deg); }
+    16%  { opacity: 1; transform: translate(-50%,-50%) scale(1.18) rotate(2deg); }
+    30%  { transform: translate(-50%,-50%) scale(1) rotate(0); }
+    70%  { opacity: 1; transform: translate(-50%,-62%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%,-130%) scale(.95); }
+  }
 
   /* ── lever ── */
   #rail {
@@ -660,9 +676,16 @@ const SYMS = [
   // джекпот 🎰 (v12.2): вес 0 — НЕ выпадает из randSym (не трогает винрейт), его
   // лэндинг — отдельный ролл JACKPOT_P в doSpin (3×🎰 → окно рекламы). balance.md §8
   { id: "jackpot", emoji: "🎰", w: 0, pay: 0, jackpot: true },
+  // бусты-символы (v13.5): вес 0 (как джекпот, не из randSym — винрейт §1 не меняют),
+  // 3-в-ряд → инап магазина выигран прямо в слоте, сразу применяется + крупный текст,
+  // без окна. Версии короче магазинных (balance.md §7/§9, monetization.md)
+  { id: "btTurbo", emoji: "🚀", w: 0, pay: 0, boost: true },
+  { id: "btWild",  emoji: "🍀", w: 0, pay: 0, boost: true },
+  { id: "btMult",  emoji: "✨", w: 0, pay: 0, boost: true },
 ];
 const WILD = SYMS.find(s => s.wild);
 const JACKPOT = SYMS.find(s => s.jackpot);
+const BOOST_SYMS = SYMS.filter(s => s.boost);
 const WSUM = SYMS.reduce((a, s) => a + s.w, 0);
 const REGEN_MS = 30000;          // 1 спин / 30 сек (прото, v13; в проде медленнее) — balance.md §2
 const SPINS_MAX = 50;            // v11: 100 → 50 (запрос автора) — balance.md §2
@@ -687,6 +710,11 @@ const TURBO_T1 = 1.0, TURBO_T2 = 0.5;  // durMul: тир1 = рука, тир2 = 
 const WILD_STREAK = 25;                // спинов с принудительным ⚡ на 1-м барабане (v13.4: 10→25)
 const SHOP_SPINS = 25;                 // спинов за рекламу/магазин — мгновенно (v13.4: 10→25)
 const BUFF_MULT = 2;                   // «×2 харда+опыт» на 5 минут
+// бусты можно ВЫИГРАТЬ на барабанах (v13.5): символы 🚀/🍀/✨ (вес 0, как джекпот),
+// 3-в-ряд → буст. Каждый — независимый ролл за спин. Версии короче магазинных. balance.md §9
+const BOOST_P = 0.012;                 // шанс каждого из 3 бустов за спин (~1/83)
+const WIN_BOOST_MS = 60 * 1000;        // турбо тир2 / ×2, выигранные на барабанах — 1 минута
+const WIN_WILD_STREAK = 10;            // wild-полоса с барабанов — 10 спинов
 // девочки бесконечны (v13): страница = 9 девочек, имя/аватар генерятся по глобальному
 // индексу. Пулы разной длины → комбинации имя+аватар не повторяются на ранних страницах
 const GIRL_NAMES = ["Юки","Аска","Рин","Мика","Хана","Сора","Юмэ","Рэй","Сакура",
@@ -704,7 +732,7 @@ const girl = gi => {
 /* ═══════════ состояние ═══════════ */
 const SAVE_V = 17;
 // версия билда — мелким текстом в футере (см. разметку футера)
-const BUILD = "v13.4 · 2026-06-14";
+const BUILD = "v13.5 · 2026-06-14";
 // джекпот — символ 🎰 на барабанах: независимый ролл на каждый спин. ~0.015 →
 // 1 из ~67 спинов ≈ 3 мин ручной игры (быстрее на турбо = больше рекламы). balance.md §8
 const JACKPOT_P = 0.015;
@@ -895,13 +923,14 @@ const randSym = () => {
 };
 // лента барабана — повторяющийся цикл из 3 разных иконок («виртуальный барабан»):
 // соседние символы никогда не совпадают, веса работают только на выбор символа стопа
-// 5 символов в цикле (v11: +wild ⚡, v12.2: +jackpot 🎰): соседние и стык цикла
-// никогда не совпадают, у каждого барабана своя ротация — нет синхронных столбцов.
-// 🎰 виден на ленте, но на линию садится только форс-роллом (вес 0 в randSym)
+// 8 символов в цикле (v11: +wild ⚡, v12.2: +jackpot 🎰, v13.5: +3 буста 🚀🍀✨):
+// соседние и стык цикла никогда не совпадают, у каждого барабана своя ротация —
+// нет синхронных столбцов. 🎰 и бусты видны на ленте, но на линию садятся только
+// форс-роллом (вес 0 в randSym). Цикл из 8 разных символов → дублей-соседей нет.
 const CYCLES = [
-  [SYMS[0], SYMS[1], SYMS[2], SYMS[3], SYMS[4]],
-  [SYMS[1], SYMS[3], SYMS[0], SYMS[4], SYMS[2]],
-  [SYMS[2], SYMS[4], SYMS[3], SYMS[0], SYMS[1]],
+  [SYMS[0], SYMS[1], SYMS[2], SYMS[3], SYMS[4], SYMS[5], SYMS[6], SYMS[7]],
+  [SYMS[1], SYMS[3], SYMS[0], SYMS[4], SYMS[2], SYMS[6], SYMS[7], SYMS[5]],
+  [SYMS[2], SYMS[4], SYMS[3], SYMS[0], SYMS[1], SYMS[7], SYMS[5], SYMS[6]],
 ];
 const reels = [...document.querySelectorAll(".reel")].map((el, idx) => {
   const r = { el, strip: el.querySelector(".strip"), syms: [], center: 4, y: 0, tension: 0, cycle: CYCLES[idx] };
@@ -1012,6 +1041,18 @@ function floatText(txt, color, dx) {
   winline.appendChild(f);
   setTimeout(() => f.remove(), 1300);
 }
+// крупный текст выигрыша поверх слота (v13.5): «что и сколько выиграли» как часть VFX
+// — изобильнее обычного winline. Якорится по центру слота, всплывает и гаснет.
+// under=true → слой под окнами (выигрыши слота не лезут поверх модалок, как §7)
+function bigWinText(txt, color, under) {
+  const box = document.getElementById("slotbox").getBoundingClientRect();
+  const el = document.createElement("div");
+  el.className = "bigwin"; el.textContent = txt; el.style.color = color;
+  el.style.left = (box.left + box.width / 2) + "px";
+  el.style.top = (box.top + box.height / 2) + "px";
+  fxRoot(under).appendChild(el);
+  setTimeout(() => el.remove(), 1400);
+}
 // плавающий +N над произвольным элементом (бар спинов при дубле гачи и т.п.)
 function floatAt(el, txt, color) {
   const r = el.getBoundingClientRect();
@@ -1096,8 +1137,18 @@ async function doSpin(durMul, handY) {
   // v13: НЕ выпадает, если открыто любое окно (автоспин крутит на фоне) — окно
   // джекпота не должно всплывать поверх гачи/магазина и т.п.
   const jackpotHit = !forced && !TUT.active && !overlayOpen() && Math.random() < JACKPOT_P;
+  // бусты-символы (v13.5): как джекпот, но без окна — 3-в-ряд → инап применяется сразу.
+  // каждый из 3 бустов — независимый ролл BOOST_P; если совпали несколько, берём один
+  // случайный. Джекпот в приоритете, тратить wild-полосу не должны (else-if). balance.md §9
+  let boostHit = null;
+  if (!jackpotHit && !forced && !TUT.active && !overlayOpen()) {
+    const hits = BOOST_SYMS.filter(() => Math.random() < BOOST_P);
+    if (hits.length) boostHit = hits[(Math.random() * hits.length) | 0];
+  }
   if (jackpotHit) {
     targets[0] = targets[1] = targets[2] = JACKPOT;
+  } else if (boostHit) {
+    targets[0] = targets[1] = targets[2] = boostHit;
   } else if (!forced && S.wildStreak > 0) {
     // wild-полоса (магазин §7): 1-й барабан принудительно ⚡ на N спинов
     targets[0] = WILD; S.wildStreak--;
@@ -1162,6 +1213,12 @@ function evaluate() {
     setTimeout(showJackpot, 650);  // дать увидеть 🎰🎰🎰 на линии, потом окно рекламы
     return true;
   }
+  // буст-символ 🚀/🍀/✨ 3-в-ряд (v13.5): инап выигран — применяем сразу + крупный
+  // текст, без окна. Своя ветка до lineWins: буст не-wild, из randSym не выпадает (balance.md §9)
+  if (centers[0].boost && centers.every(s => s === centers[0])) {
+    grantBoost(centers[0]);
+    return true;
+  }
   const wins = lineWins(centers);
   if (wins.length === 0) {
     loseStreak++;
@@ -1182,6 +1239,7 @@ function evaluate() {
     S.harda += h; S.totalWon += h; S.exp += e; S.spins += credited;
     winTxt.textContent = `⚡ СУПЕР-ВИН! +${fmt(h)} 🪙 +${fmt(e)} 🧿` + (credited > 0 ? ` +${credited} 🎲` : "");
     goldFlash();
+    bigWinText("⚡ СУПЕР-ВИН!", "#ffd34d", true);
     floatText("+" + fmt(h) + " 🪙", "#e8556d", -64);
     floatText("+" + fmt(e) + " 🧿", "#9fd64e", 0);
     if (credited > 0) floatText("+" + credited + " 🎲", "#4db8e8", 64);
@@ -1196,6 +1254,7 @@ function evaluate() {
     S.harda += amt; S.totalWon += amt;
     winCount("WIN +", amt, " харды");
     goldFlash();
+    bigWinText("+" + fmt(amt) + " 🪙", "#e8556d", true);
     floatText("+" + fmt(amt) + " 🪙", "#e8556d", 0);
     emojiBurst("🪙", 14, false, null, true);
     for (let i = 0; i < 4; i++) sCoin(i);
@@ -1205,6 +1264,7 @@ function evaluate() {
     S.exp += amt;
     winCount("🔥 BIG WIN +", amt, " экспы");
     goldFlash();
+    bigWinText("+" + fmt(amt) + " 🧿", "#9fd64e", true);
     floatText("+" + fmt(amt) + " 🧿", "#9fd64e", 0);
     emojiBurst("🧿", 22, true, null, true);
     bigCelebrate(true); say("bigwin", "🤩");
@@ -1216,11 +1276,36 @@ function evaluate() {
     if (credited > 0) winCount("🔥 BIG WIN +", credited, " спинов");
     else winTxt.textContent = "🎲 спины уже полные!";
     goldFlash();
+    if (credited > 0) bigWinText("+" + credited + " 🎲", "#4db8e8", true);
     if (credited > 0) floatText("+" + credited + " 🎲", "#4db8e8", 0);
     emojiBurst("🎲", 22, true, null, true);
     bigCelebrate(true); say("bigwin", "🤩");
   }
   return true;
+}
+
+// буст выигран на барабанах 3-в-ряд (v13.5): применить инап сразу + крупный текст.
+// Длительности короче магазинных: турбо тир2/1мин, wild +10 спинов, ×2/1мин (balance.md §9)
+function grantBoost(sym) {
+  loseStreak = 0;
+  winline.classList.remove("old");
+  reels.forEach(r => r.strip.children[r.center].classList.add("hit"));
+  let txt, big;
+  if (sym.id === "btTurbo") {
+    S.turboTier = 2; S.turboUntil = Date.now() + WIN_BOOST_MS;
+    txt = "🚀 ТУРБО-АВТОСПИН ВЫИГРАН!"; big = "🚀 ТУРБО ×2";
+  } else if (sym.id === "btWild") {
+    S.wildStreak += WIN_WILD_STREAK;
+    txt = `🍀 СЧАСТЛИВАЯ ПОЛОСА · +${WIN_WILD_STREAK} спинов с ⚡!`; big = "🍀 +" + WIN_WILD_STREAK + " WILD";
+  } else {
+    S.mult2Until = Date.now() + WIN_BOOST_MS;
+    txt = "✨ ×2 ХАРДА И ОПЫТ ВЫИГРАН!"; big = "✨ ×2";
+  }
+  winTxt.textContent = txt;
+  goldFlash();
+  bigWinText(big, "#ffd34d", true);
+  emojiBurst(sym.emoji, 24, true, null, true);
+  bigCelebrate(true); say("bigwin", "🤩");
 }
 
 /* ═══════════ натяжение лент от рычага (каскад слева-направо) ═══════════ */
