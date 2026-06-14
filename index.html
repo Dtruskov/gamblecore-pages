@@ -187,9 +187,9 @@
   /* магазин — жёлтый, гача — розовый */
   #shopBtn { background: #f5c518; color: #2a2306; }
   #collBtn { background: #ff5fa2; color: #fff; }
-  /* перерождение и автоспин заметно выше «прокачки/магазина/гачи» (~44px) — ~70px */
+  /* перерождение/рулетка/автоспин — крупные кнопки (v14: ×2 выше, запрос автора) */
   #rebirthBtn {
-    position: relative; overflow: hidden; background: #2f3137; padding: 0; height: 70px;
+    position: relative; overflow: hidden; background: #2f3137; padding: 0; height: 140px;
   }
   #rebirthFill {
     position: absolute; inset: 0; width: 0%; background: #6f9a33;
@@ -209,14 +209,16 @@
   #upgBtn { position: relative; overflow: hidden; padding: 0; height: 44px; }
   #upgFill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: #e8556d; transition: width .35s ease; }
   #upgBtnTxt { position: relative; z-index: 1; line-height: 44px; }
-  /* автоспин и перерождение — одного размера (height 70px, текст по центру) */
-  #autoBtn { height: 70px; padding: 0 6px; display: flex; align-items: center; justify-content: center; }
+  /* автоспин и перерождение — одного размера (v14: ×2 выше, текст по центру) */
+  #autoBtn { height: 140px; padding: 0 6px; display: flex; align-items: center; justify-content: center; }
   #autoBtn.on { background: #4db8e8; color: #082230; }
   /* Рулетка экспы (v14) — между перерождением и автоспином, золотисто-янтарная */
   #rouletteBtn {
-    height: 64px; padding: 0 8px; display: flex; align-items: center; justify-content: center;
+    height: 140px; padding: 0 8px; display: flex; flex-direction: column; gap: 4px;
+    align-items: center; justify-content: center; line-height: 1.25;
     background: linear-gradient(135deg, #f0a830, #d4861a); color: #2a1d05; text-align: center;
   }
+  #rouletteBtn small { font-weight: 700; opacity: .9; font-size: 12px; }
 
   footer {
     text-align: center; font-size: 10.5px; color: #6f717a; padding-bottom: 4px;
@@ -283,8 +285,22 @@
   .wlabel { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
   .wlabel span {
     position: absolute; left: 0; top: 0; transform: translate(-50%,-50%);
-    font: 800 11px/1 inherit; color: #fff; white-space: nowrap;
-    text-shadow: 0 1px 2px #000, 0 0 2px #000;
+    font-size: 22px; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6));
+  }
+  /* крупный текст результата поверх колеса (v14) */
+  .rltfx {
+    position: absolute; left: 50%; top: 50%; z-index: 4; pointer-events: none;
+    font-weight: 900; font-size: 26px; white-space: nowrap; color: #9fd64e;
+    text-shadow: 0 2px 6px #000, 0 0 10px rgba(0,0,0,.8);
+    animation: rltpop 1.5s ease-out forwards;
+  }
+  .rltfx.big { font-size: 34px; }
+  @keyframes rltpop {
+    0%   { transform: translate(-50%,-50%) scale(.3); opacity: 0; }
+    15%  { transform: translate(-50%,-50%) scale(1.15); opacity: 1; }
+    30%  { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+    70%  { opacity: 1; }
+    100% { transform: translate(-50%,-92%) scale(1); opacity: 0; }
   }
 
   /* слой VFX ПОД окнами (z-index 9 < overlay 10): эффекты выигрышных круток слота
@@ -812,7 +828,7 @@ const girl = gi => {
 /* ═══════════ состояние ═══════════ */
 const SAVE_V = 17;
 // версия билда — мелким текстом в футере (см. разметку футера)
-const BUILD = "v14 · 2026-06-14";
+const BUILD = "v14.1 · 2026-06-14";
 // джекпот — символ 🎰 на барабанах: независимый ролл на каждый спин. ~0.015 →
 // 1 из ~67 спинов ≈ 3 мин ручной игры (быстрее на турбо = больше рекламы). balance.md §8
 const JACKPOT_P = 0.015;
@@ -1720,13 +1736,14 @@ const rltSpinBtn = document.getElementById("rltSpin"), rltAllBtn = document.getE
 const wheelEl = document.getElementById("wheel");
 let wheelRot = 0; // накопленный угол колеса — всегда крутим вперёд
 
-// строим колесо под ТЕКУЩИЙ goal() (значения секторов от него зависят) — при открытии
+// смайлик сектора (вместо суммы — числа выглядели странно, balance.md §10): обычный
+// выигрыш = смайлик опыта, бигвины — покруче; джекпот-сектор (0.25) — самый крутой
+const rouletteEmoji = f => f >= 0.25 ? "💎" : f >= 0.13 ? "🔥" : f >= 0.07 ? "🌟" : "🧿";
+// строим колесо — все секторы фиолетовые, ОДИН жёлтый бигвин (0.25) — при открытии
 function buildWheel() {
   const slice = 360 / ROULETTE.length;
   const stops = ROULETTE.map((f, i) => {
-    const c = f >= 0.25 ? "#caa23a"            // джекпот-сектор — золотой
-            : f >= 0.13 ? "#3a6ed0"            // крупные — синие
-            : (i % 2 ? "#5a2c8a" : "#7a3fb0"); // прочие — чередующийся фиолетовый
+    const c = f >= 0.25 ? "#e0b53a" : (i % 2 ? "#5a2c8a" : "#7a3fb0"); // один жёлтый бигвин, остальные фиолетовые
     return `${c} ${i * slice}deg ${(i + 1) * slice}deg`;
   });
   wheelEl.style.background = `conic-gradient(${stops.join(",")})`;
@@ -1735,13 +1752,21 @@ function buildWheel() {
     const ang = i * slice + slice / 2;
     const lab = document.createElement("div");
     lab.className = "wlabel";
-    // встать у внешнего радиуса под углом сектора, текст оставить вертикальным
-    lab.style.transform = `rotate(${ang}deg) translateY(-95px) rotate(${-ang}deg)`;
-    lab.innerHTML = `<span>${fmt(rouletteExp(f))}</span>`;
+    // встать у внешнего радиуса под углом сектора, смайлик оставить вертикальным
+    lab.style.transform = `rotate(${ang}deg) translateY(-92px) rotate(${-ang}deg)`;
+    lab.innerHTML = `<span>${rouletteEmoji(f)}</span>`;
     wheelEl.appendChild(lab);
   });
 }
 
+// звук крутки колеса: тики редеют к концу (колесо тормозит, ease-out) — как стрекот
+function rltTicks(dur) {
+  const K = Math.max(18, Math.round(dur / 110));
+  for (let k = 1; k <= K; k++) {
+    const t = dur * (1 - (1 - k / K) ** 2.3); // ранние тики чаще, поздние реже
+    setTimeout(sTick, t);
+  }
+}
 // доворачиваем колесо так, чтобы сектор idx встал под верхнюю стрелку (всегда вперёд)
 function spinWheelTo(idx, dur, done) {
   const slice = 360 / ROULETTE.length;
@@ -1751,7 +1776,17 @@ function spinWheelTo(idx, dur, done) {
   wheelRot += 5 * 360 + delta; // 5 полных оборотов + доводка до сектора
   wheelEl.style.transition = `transform ${dur}ms cubic-bezier(.12,.66,.16,1)`;
   wheelEl.style.transform = `rotate(${wheelRot}deg)`;
+  rltTicks(dur);
   setTimeout(done, dur);
+}
+// крупный текст результата поверх колеса (текст пишем на эффекте, не на секторах)
+function rltResultFx(txt, color, big) {
+  const wrap = document.getElementById("wheelWrap");
+  const el = document.createElement("div");
+  el.className = "rltfx" + (big ? " big" : "");
+  el.textContent = txt; el.style.color = color;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 1500);
 }
 
 function updateRoulette() {
@@ -1788,8 +1823,9 @@ function rltSpinOne() {
     S.exp += gain;
     sThud();
     const wrap = document.getElementById("wheelWrap");
-    if (jp) { sFanfare(); confetti(); vibrate([60, 40, 120]); emojiBurst("⭐", 22, true, wrap); }
+    if (jp) { sFanfare(); confetti(); vibrate([60, 40, 120]); emojiBurst("💎", 22, true, wrap); }
     else { for (let i = 0; i < 3; i++) sCoin(i); vibrate(20); emojiBurst("🧿", 14, false, wrap); }
+    rltResultFx((jp ? "💎 " : "") + `+${fmt(gain)} 🧿`, jp ? "#ffd34d" : "#9fd64e", jp);
     rltLog.textContent = (jp ? "🎉 ДЖЕКПОТ РУЛЕТКИ! " : "✨ ") + `+${fmt(gain)} 🧿 опыта!`;
     rltSpinning = false;
     updateRoulette(); update(); save();
@@ -1821,6 +1857,7 @@ function rltSpinAll() {
   spinWheelTo(lastIdx, 2600, () => {
     sFanfare(); confetti(); vibrate([60, 40, 120]);
     emojiBurst("🧿", 22, true, document.getElementById("wheelWrap"));
+    rltResultFx(`+${fmt(total)} 🧿`, "#9fd64e", true);
     rltLog.textContent = `🎰 ${k} круток · +${fmt(total)} 🧿 опыта` + (jackpots ? ` · 🎉 джекпотов: ${jackpots}` : "");
     rltSpinning = false;
     updateRoulette(); update(); save();
@@ -2725,10 +2762,11 @@ function update() {
   const rollsAfford = Math.min(MULTI_MAX, Math.floor(S.harda / rollCost()));
   collBtn.textContent = `гача 💖 ×${rollsAfford}`;
   collBtn.classList.toggle("blink", S.harda >= rollCost());
-  // Рулетка экспы (v14): на кнопке меню — счётчик билетов, мигание когда есть чем крутить
+  // Рулетка экспы (v14): как гача — выигранные билеты + на сколько круток хватает харды
   const rouletteBtn = document.getElementById("rouletteBtn");
-  rouletteBtn.textContent = `🎟️ Рулетка экспы · ${S.tickets}`;
-  rouletteBtn.classList.toggle("blink", S.tickets > 0);
+  const rltAfford = Math.min(MULTI_MAX, Math.floor(S.harda / ticketCost()));
+  rouletteBtn.innerHTML = `🎟️ Рулетка экспы<br><small>${S.tickets} 🎟️ · ×${rltAfford} за 🪙</small>`;
+  rouletteBtn.classList.toggle("blink", S.tickets > 0 || S.harda >= ticketCost());
   // окно рулетки открыто — обновить (харда капает автоспином/регеном)
   if (rouletteOverlay.classList.contains("show") && !rltSpinning) updateRoulette();
   // гача открыта на галерее — обновить кнопки роллов (харда капает и автоспином)
