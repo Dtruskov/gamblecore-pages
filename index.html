@@ -579,11 +579,11 @@
         <div class="fill c-spins" id="spinsFill"></div>
         <div class="txt"><b><span class="cur">🎲</span> спины</b><span id="spinsVal">—</span></div>
       </div>
-      <div class="bar">
+      <div class="bar" id="hardaBar">
         <div class="fill c-harda" id="hardaFill"></div>
         <div class="txt"><b><span class="cur">🪙</span> харда</b><span id="hardaVal">—</span></div>
       </div>
-      <div class="bar">
+      <div class="bar" id="expBar">
         <div class="fill c-exp" id="expFill"></div>
         <div class="txt"><b><span class="cur">🧿</span> экспа</b><span id="expVal">—</span></div>
       </div>
@@ -829,7 +829,7 @@ const girl = gi => {
 /* ═══════════ состояние ═══════════ */
 const SAVE_V = 17;
 // версия билда — мелким текстом в футере (см. разметку футера)
-const BUILD = "v14.1 · 2026-06-14";
+const BUILD = "v15 · 2026-06-15";
 // джекпот — символ 🎰 на барабанах: независимый ролл на каждый спин. ~0.015 →
 // 1 из ~67 спинов ≈ 3 мин ручной игры (быстрее на турбо = больше рекламы). balance.md §8
 const JACKPOT_P = 0.015;
@@ -852,7 +852,14 @@ const DEFAULTS = () => ({
   // билеты Рулетки экспы (v14): инвентарь, переживают перерождение. SAVE_V НЕ бампали —
   // поле аддитивно, старые сейвы (v17 без tickets) подхватят дефолт 0 (balance.md §10)
   tickets: 0,
-  // автоспин открывается за 1-е перерождение (v12); autoTutDone — его мини-туториал
+  // прогрессивное раскрытие UI (v15, 2026-06-15): на старте видны только кот+барабаны+
+  // рука; бары и кнопки открываются по ходу обучения (tutorial.md). Флаги аддитивны —
+  // старые сейвы грандфазерятся в load() (всё открыто). obSpins — счётчик спинов после
+  // вехи (2-е перерождение → автоспин на 3-м спине; автоспин-тутор → магазин на 5-м)
+  barSpins: false, barExp: false,
+  upgUnlocked: false, gachaUnlocked: false, rebirthUnlocked: false,
+  shopUnlocked: false, rouletteUnlocked: false, obSpins: 0,
+  // автоспин открывается мини-туториалом на 2-м перерождении (v15, было 1-е); autoTutDone — он же
   autoUnlocked: false, autoTutDone: false,
   savedAt: 0, // когда сейв записан — конфликт устройств решается «свежее побеждает»
 });
@@ -912,7 +919,16 @@ function load() {
     const raw = localStorage.getItem("gamblecore_proto");
     if (raw) {
       const d = JSON.parse(raw);
-      if (d.v === SAVE_V) return Object.assign(DEFAULTS(), d);
+      if (d.v === SAVE_V) {
+        const s = Object.assign(DEFAULTS(), d);
+        // грандфазер (v15): старый сейв, уже прошедший прежний туториал, не должен вдруг
+        // потерять кнопки/бары из-за прогрессивного раскрытия — открываем всё разом
+        if (s.tutDone && d.barSpins === undefined) {
+          s.barSpins = s.barExp = s.upgUnlocked = s.gachaUnlocked =
+            s.rebirthUnlocked = s.shopUnlocked = s.rouletteUnlocked = true;
+        }
+        return s;
+      }
     }
   } catch (e) {}
   return DEFAULTS();
@@ -1283,7 +1299,7 @@ async function doSpin(durMul, handY) {
     return;
   }
   spinning = true;
-  S.spins--; S.totalSpins++;
+  S.spins--; S.totalSpins++; S.obSpins++; // obSpins — счётчик для вех онбординга (v15)
   // winline НЕ очищаем: прошлый вин висит, пока крутятся барабаны (feel.md §7)
   document.querySelectorAll(".cell.hit").forEach(c => c.classList.remove("hit"));
   update();
@@ -1334,6 +1350,7 @@ async function doSpin(durMul, handY) {
   spinning = false;
   update(); deferSave(); // сейв за кадр — не блокирует пейнт победы (v13.6)
   if (TUT.active) tutOnSpinEnd();
+  else if (S.tutDone) onboardingCheck(); // вехи онбординга после основного туториала (v15)
 }
 
 // under=true (выигрыши слота) → конфетти/виньетка в слой под окнами (v13)
@@ -1705,16 +1722,16 @@ document.getElementById("rebirthBtn").addEventListener("click", () => {
     : `🎁 Перезрел: экспа сверх цели не пропадает — каждые +50% цели = стартовая харда на 1 ролл гачи (макс 4)`;
   document.getElementById("rbGo").disabled = S.exp < goal();
   rbOverlay.classList.add("show");
+  if (TUT.step === "rebirthTut") miniTutEnd(); // снять блокеры — окно перерождения живое (v15)
 });
 document.getElementById("rbClose").addEventListener("click", () => rbOverlay.classList.remove("show"));
 document.getElementById("rbGo").addEventListener("click", () => {
   if (S.exp < goal()) return;
   const tiers = overTiers(); // считаем ДО сброса экспы и повышения уровня
-  const firstRebirth = !S.autoUnlocked; // автоспин открывается наградой за 1-й престиж
   S.level++; S.exp = 0;
   S.upgCount = 0; S.hardaMult = 1;
   S.spins = SPINS_MAX;
-  S.autoUnlocked = true;
+  S.obSpins = 0; // веха: считаем спины после перерождения заново (автоспин на 3-м, v15)
   // перезрел → стартовая харда: тир × цена ролла УЖЕ нового уровня (balance.md §4)
   S.harda = tiers * rollCost();
   rbOverlay.classList.remove("show");
@@ -1723,8 +1740,9 @@ document.getElementById("rbGo").addEventListener("click", () => {
   if (tiers > 0) floatAt(document.getElementById("hardaVal").parentElement,
     `🎁 +${fmt(S.harda)} 🪙`, "#e8556d");
   update(); save();
-  // 1-е перерождение → разблокировали автоспин, мини-туториал про него (tutorial.md §2)
-  if (firstRebirth && !S.autoTutDone) setTimeout(startAutoTut, 900);
+  // онбординг (v15): автоспин — на 2-м перерождении (+3 спина), рулетка — на 3-м.
+  // Проверяем после паузы (фанфара отыграет), мини-туторы — в onboardingCheck()
+  setTimeout(onboardingCheck, 900);
 });
 
 /* ═══════════ Рулетка экспы (v14, balance.md §10) ═══════════ */
@@ -2182,7 +2200,7 @@ gachaBack.addEventListener("click", () => {
   } else {
     stopGalleryScroll();
     gachaOverlay.classList.remove("show");
-    if (TUT.step === "gachaClose") tutGoto("swipe3");
+    if (TUT.step === "gachaClose") tutGoto("expIntro");
   }
 });
 // тап по окну гачи во время анимации (рулетки/монтажа) — пропустить к результату (v13).
@@ -2565,10 +2583,16 @@ function tutGoto(step) {
 function tutRender() {
   if (!TUT.active) return;
   switch (TUT.step) {
-    case "swipe1":
+    case "swipe1": {
       TUT.force = "harda";
-      tutShow(rail, "Свайпни рычаг вниз — крути!", { paw: true });
+      // спины-бар появляется с 1-й круткой — тогда же объясняем «энергию» (встроено
+      // в начало вместо отдельного финального шага про спины, v15)
+      const msg = (TUT.spins | 0) === 0
+        ? "Тяни за ручку вниз — крути!"
+        : "🎲 Спины — твоя энергия, капают со временем. Крути ещё!";
+      tutShow(rail, msg, { paw: true });
       break;
+    }
     case "upgOpen":
       TUT.force = null;
       tutShow(document.getElementById("upgBtn"), "Накопил! Жми «прокачка»", { paw: true });
@@ -2600,30 +2624,41 @@ function tutRender() {
       tutShow(gachaBack,
         "Карточка твоя — первая из 9! Полный сет = платина +5% к экспе навсегда. Возвращайся к слоту");
       break;
-    case "swipe3":
-      TUT.force = "spins";
-      // гарантируем место под выигрыш +10: скриптованный «BIG WIN +10 спинов»
-      // не должен сгореть об кап (бар покажет ~39/50 — незаметно)
-      if (S.spins > SPINS_MAX - 11) { S.spins = SPINS_MAX - 11; update(); }
-      tutShow(rail, "Крути!", { paw: true });
-      break;
-    case "spinsWon": {
+    case "expIntro":
+      // финал основного туториала: открываем экспа-бар, показываем куда копить (v15)
       TUT.force = null;
-      // прожектор на барабаны + бар спинов разом (объединённый прямоугольник)
-      const a = document.getElementById("slotbox").getBoundingClientRect();
-      const b = document.getElementById("spinsBar").getBoundingClientRect();
-      const left = Math.min(a.left, b.left), top = Math.min(a.top, b.top);
-      tutShow({ left, top, width: Math.max(a.right, b.right) - left, height: Math.max(a.bottom, b.bottom) - top },
-        "🎲 Ты выиграл БЕСПЛАТНЫЕ КРУТКИ! Спины — твоя энергия, они капают со временем. (тапни)",
+      S.barExp = true; update(); // экспа-бар должен стать видимым ДО прожектора на него
+      tutShow(document.getElementById("expBar"),
+        "🧿 Теперь копи ЭКСПУ — заполнишь шкалу и сможешь ПЕРЕРОДИТЬСЯ ♻️ (тапни)",
         { tapAnywhere: true });
       break;
-    }
+    case "rebirthTut":
+      // веха: экспа набрана впервые → учим кнопку перерождения (v15)
+      TUT.force = null;
+      tutShow(document.getElementById("rebirthBtn"),
+        "🧿 Шкала полна! Жми ПЕРЕРОЖДЕНИЕ — сбросишь ран ради ×2 ко всем выигрышам ♻️",
+        { paw: true });
+      break;
     case "autoReward":
-      // отдельный мини-туториал ПОСЛЕ 1-го перерождения (автоспин — награда за престиж)
+      // веха: 2-е перерождение + 3 спина → автоспин (награда за престиж, v15)
       TUT.force = null;
       tutShow(autoBtn,
-        "🎁 Награда за перерождение: АВТОСПИН! Крутит сам, пока отдыхаешь — но медленнее руки 🐢 (тапни)",
-        { tapAnywhere: true });
+        "🎁 Открыт АВТОСПИН! Крутит сам, пока отдыхаешь — но медленнее руки 🐢 (тапни)",
+        { paw: true, tapAnywhere: true });
+      break;
+    case "shopTut":
+      // веха: +5 спинов после автоспина → магазин + подарок-турбо (v15)
+      TUT.force = null;
+      tutShow(document.getElementById("shopBtn"),
+        "🛒 Открыт МАГАЗИН бустов! Держи подарок: турбо-автоспин на 5 минут 🚀 (тапни)",
+        { paw: true, tapAnywhere: true });
+      break;
+    case "rouletteTut":
+      // веха: 3-е перерождение → Рулетка экспы (v15)
+      TUT.force = null;
+      tutShow(document.getElementById("rouletteBtn"),
+        "🎟️ Открыта РУЛЕТКА ЭКСПЫ! Крути билеты — выигрывай опыт, когда его мало (тапни)",
+        { paw: true, tapAnywhere: true });
       break;
   }
   TUT.rendered = TUT.step;
@@ -2631,20 +2666,29 @@ function tutRender() {
 function tutOnSpinEnd() {
   // пауза 700мс — дать выигрышу отыграть, потом вернуть темноту
   if (TUT.step === "swipe1") {
-    if (S.harda >= upgCost()) setTimeout(() => tutGoto("upgOpen"), 700);
-    else setTimeout(tutRender, 700);
+    TUT.spins = (TUT.spins | 0) + 1;
+    S.barSpins = true;                 // спины-бар появляется с 1-й круткой (энергия) — v15
+    if (TUT.spins >= 3) {              // 3 крутки → открываем харда-бар + прокачку
+      S.upgUnlocked = true; update(); save();
+      setTimeout(() => tutGoto("upgOpen"), 700);
+    } else { update(); setTimeout(tutRender, 700); }
   } else if (TUT.step === "swipe2") {
-    if (S.harda >= rollCost()) setTimeout(() => tutGoto("gachaOpen"), 700);
-    else setTimeout(tutRender, 700);
-  } else if (TUT.step === "swipe3") {
-    setTimeout(() => tutGoto("spinsWon"), 700);
+    if (S.harda >= rollCost()) {        // хватает на ролл → открываем гачу
+      S.gachaUnlocked = true; update(); save();
+      setTimeout(() => tutGoto("gachaOpen"), 700);
+    } else setTimeout(tutRender, 700);
   }
 }
-// «тапни, чтобы продолжить» — клик по блокеру (всплывает с .tutBlock)
+// «тапни, чтобы продолжить» — клик по блокеру (всплывает с .tutBlock).
+// rebirthTut кончается НЕ тут, а по настоящему тапу кнопки перерождения (см. её обработчик)
 tutBlocks.addEventListener("click", () => {
   if (TUT.rendered !== TUT.step) return; // шаг ещё не отрисован — двойной тап не проскакивает
-  if (TUT.step === "spinsWon") tutEnd();        // первый тутор кончается тут (автоспина ещё нет)
-  else if (TUT.step === "autoReward") autoTutEnd(); // мини-тутор автоспина после 1-го престижа
+  switch (TUT.step) {
+    case "expIntro":    tutEnd(); break;          // конец основного туториала (v15)
+    case "autoReward":  autoTutEnd(); break;      // мини-тутор автоспина (2-е перерождение)
+    case "shopTut":     shopTutEnd(); break;      // мини-тутор магазина
+    case "rouletteTut": rouletteTutEnd(); break;  // мини-тутор рулетки (3-е перерождение)
+  }
 });
 function tutEnd() {
   TUT.active = false; TUT.step = null; TUT.force = null;
@@ -2653,21 +2697,51 @@ function tutEnd() {
   S.tutDone = true; save();
   say("idle", "😺");
 }
-// конец мини-туториала автоспина (отдельный флаг — не сбрасывает tutDone)
-function autoTutEnd() {
+// общий конец мини-туториала: чистит рантайм, НЕ трогает tutDone (флаг — на вызывающем)
+function miniTutEnd() {
   TUT.active = false; TUT.step = null; TUT.force = null;
   tutHide();
   tutBlocks.style.display = "none";
-  S.autoTutDone = true; save();
-  say("idle", "😺");
 }
+function autoTutEnd() {
+  miniTutEnd();
+  S.autoTutDone = true; S.obSpins = 0; // веха: считаем 5 спинов до магазина заново (v15)
+  save(); update(); say("idle", "😺");
+}
+function shopTutEnd()     { miniTutEnd(); save(); update(); say("idle", "😺"); }
+function rouletteTutEnd() { miniTutEnd(); save(); update(); say("idle", "😺"); }
 function tutStart() {
-  TUT.active = true;
+  TUT.active = true; TUT.spins = 0;
   tutGoto("swipe1");
 }
+// мини-туторы открывают свою кнопку (update() делает её видимой), потом подсвечивают
+function startRebirthTut() {
+  S.rebirthUnlocked = true; update();
+  TUT.active = true; tutGoto("rebirthTut");
+}
 function startAutoTut() {
-  TUT.active = true;
-  tutGoto("autoReward");
+  S.autoUnlocked = true; update();
+  TUT.active = true; tutGoto("autoReward");
+}
+function startShopTut() {
+  S.shopUnlocked = true;
+  // подарок: бесплатный турбо-автоспин на 5 минут (тир1 = скорость руки) — balance.md §7
+  S.turboUntil = Date.now() + FIVE_MIN; S.turboTier = 1;
+  update();
+  TUT.active = true; tutGoto("shopTut");
+}
+function startRouletteTut() {
+  S.rouletteUnlocked = true; update();
+  TUT.active = true; tutGoto("rouletteTut");
+}
+// вехи онбординга после основного туториала (v15): по одному мини-тутору за раз.
+// Зовётся после каждого спина (если tutDone) и через паузу после перерождения
+function onboardingCheck() {
+  if (TUT.active || spinning || overlayOpen()) return;
+  if (!S.rebirthUnlocked && S.exp >= goal())               { startRebirthTut(); return; }
+  if (!S.autoUnlocked && S.level >= 3 && S.obSpins >= 3)    { startAutoTut(); return; }
+  if (S.autoUnlocked && !S.shopUnlocked && S.obSpins >= 5)  { startShopTut(); return; }
+  if (!S.rouletteUnlocked && S.level >= 4)                  { startRouletteTut(); return; }
 }
 window.addEventListener("resize", () => { if (TUT.active) tutRender(); });
 
@@ -2704,6 +2778,17 @@ document.getElementById("devWipe").addEventListener("click", () => {
 
 /* ═══════════ отрисовка ═══════════ */
 function update() {
+  // прогрессивное раскрытие UI (v15): бары и кнопки видны только после своей вехи
+  // обучения (tutorial.md). Только display — высоты кнопок не трогаем (feel.md §10)
+  document.getElementById("spinsBar").style.display = S.barSpins ? "" : "none";
+  document.getElementById("hardaBar").style.display = S.upgUnlocked ? "" : "none";
+  document.getElementById("expBar").style.display = S.barExp ? "" : "none";
+  document.getElementById("shopBtn").style.display = S.shopUnlocked ? "" : "none";
+  document.getElementById("upgBtn").style.display = S.upgUnlocked ? "" : "none";
+  document.getElementById("collBtn").style.display = S.gachaUnlocked ? "" : "none";
+  document.getElementById("rebirthBtn").style.display = S.rebirthUnlocked ? "" : "none";
+  document.getElementById("rouletteBtn").style.display = S.rouletteUnlocked ? "" : "none";
+
   const secLeft = Math.max(0, Math.ceil((REGEN_MS - (Date.now() - S.lastRegen)) / 1000));
   document.getElementById("spinsFill").style.width = (S.spins / SPINS_MAX * 100) + "%";
   document.getElementById("spinsVal").innerHTML =
