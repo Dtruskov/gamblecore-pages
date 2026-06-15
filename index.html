@@ -839,7 +839,7 @@ const girl = gi => {
 /* ═══════════ состояние ═══════════ */
 const SAVE_V = 17;
 // версия билда — мелким текстом в футере (см. разметку футера)
-const BUILD = "v16 · 2026-06-15";
+const BUILD = "v16.2 · 2026-06-15";
 // джекпот — символ 🎰 на барабанах: независимый ролл на каждый спин. ~0.015 →
 // 1 из ~67 спинов ≈ 3 мин ручной игры (быстрее на турбо = больше рекламы). balance.md §8
 const JACKPOT_P = 0.015;
@@ -1065,11 +1065,10 @@ const vibrate = arg => {
 };
 
 /* ═══════════ Adsgram rewarded-реклама (ads.md) ═══════════ */
-// ⚠️ ВСТАВЬ СЮДА BLOCK ID из кабинета Adsgram (Mini Apps → твоё приложение → Ad units →
-// Reward → скопировать «Block ID», формат вроде "int-1234" или "1234"). Пока стоит
-// плейсхолдер — реклама НЕ активна: 🎬-точки работают как тест (мгновенная выдача),
-// чтобы прототип открывался и тестился вне Telegram. Подставишь реальный ID → ads вкл.
-const ADSGRAM_BLOCK_ID = "PASTE_BLOCK_ID_HERE";
+// BLOCK ID из кабинета Adsgram (Reward-юнит). ВКЛЮЧЕНО (v16.2): реклама активна в TG.
+// Вне Telegram (десктоп) / если SDK не загрузился — 🎬-точки деградируют к тест-выдаче
+// (мгновенно), чтобы прототип открывался с диска. Сменить → вписать новый ID сюда.
+const ADSGRAM_BLOCK_ID = "35295";
 let adController = null;
 try {
   // init только если SDK загрузился И BLOCK_ID реально проставлен (не плейсхолдер)
@@ -2371,10 +2370,11 @@ function runMulti(k) {
   })();
 }
 
-/* ═══════════ магазин бустов (v11) ═══════════ */
-// Сейчас всё бесплатно (тест). Релиз — Stars/реклама (monetization.md). Бусты —
-// таймеры (turboUntil/mult2Until) и счётчик (wildStreak), переживают перезагрузку
-// и перерождение в своём окне (balance.md §7)
+/* ═══════════ магазин бустов (v11; за рекламу — v16) ═══════════ */
+// Бусты выдаются за просмотр rewarded-рекламы (showAd, ads.md §3). Вне Adsgram
+// (десктоп / BLOCK_ID не вставлен) — мгновенно (тест). Релиз: возможно + Stars-канал
+// (monetization.md). Бусты — таймеры (turboUntil/mult2Until) и счётчик (wildStreak),
+// переживают перезагрузку и перерождение в своём окне (balance.md §7)
 const shopOverlay = document.getElementById("shopOverlay");
 const shopBody = document.getElementById("shopBody");
 const shopLog = document.getElementById("shopLog");
@@ -2407,7 +2407,7 @@ function renderShop() {
     `<div class="shopItem${it.on ? " on" : ""}" data-s="${it.id}">
       <div class="shopIco">${it.ico}</div>
       <div class="shopInfo"><b>${it.name}</b><span>${it.desc}</span></div>
-      <div class="shopGet">взять<br><small>тест 🆓</small></div>
+      <div class="shopGet">взять<br><small>🎬 реклама</small></div>
     </div>`).join("");
 }
 const SHOP_BUY = {
@@ -2438,9 +2438,14 @@ document.getElementById("shopClose").addEventListener("click", () => shopOverlay
 shopBody.addEventListener("click", e => {
   const t = e.target.closest(".shopItem");
   if (!t) return;
-  SHOP_BUY[t.dataset.s]();
-  vibrate(30); emojiBurst("✨", 8, false, t);
-  update(); save(); renderShop();
+  const id = t.dataset.s;
+  // буст выдаётся за просмотр rewarded-рекламы (ads.md §3): награда по досмотру,
+  // скип/no-fill → без выдачи. Вне Adsgram (десктоп/ID не вставлен) — мгновенно (тест)
+  showAd(() => {
+    SHOP_BUY[id]();
+    vibrate(30); emojiBurst("✨", 8, false, t);
+    update(); save(); renderShop();
+  }, () => { shopLog.textContent = "Реклама не загрузилась — попробуй позже"; });
 });
 
 /* ═══════════ окно «спины кончились» (v11) ═══════════ */
