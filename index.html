@@ -829,7 +829,7 @@ const girl = gi => {
 /* ═══════════ состояние ═══════════ */
 const SAVE_V = 17;
 // версия билда — мелким текстом в футере (см. разметку футера)
-const BUILD = "v15 · 2026-06-15";
+const BUILD = "v15.1 · 2026-06-15";
 // джекпот — символ 🎰 на барабанах: независимый ролл на каждый спин. ~0.015 →
 // 1 из ~67 спинов ≈ 3 мин ручной игры (быстрее на турбо = больше рекламы). balance.md §8
 const JACKPOT_P = 0.015;
@@ -2016,7 +2016,7 @@ function renderGacha() {
     gachaBody.innerHTML = html + `</div>`;
     gachaRoll.style.display = "none";
     gachaAd.style.display = "none";
-    gachaBack.textContent = "← к девочкам";
+    gachaBack.textContent = "закрыть"; // v15.1: со страницы девочки кнопка тоже полностью закрывает окно
   }
 }
 
@@ -2194,14 +2194,12 @@ gachaBody.addEventListener("click", e => {
 gachaBack.addEventListener("click", () => {
   if (rolling) return;
   if (gachaSummary) { gachaSummary = null; gachaPage = inProgressPage(); renderGacha(); return; }
-  if (gachaGirl !== null) {
-    gachaGirl = null; gachaLog.textContent = ""; renderGacha();
-    if (TUT.step === "gachaClose") tutGoto("gachaClose"); // переметить кнопку («закрыть»)
-  } else {
-    stopGalleryScroll();
-    gachaOverlay.classList.remove("show");
-    if (TUT.step === "gachaClose") tutGoto("expIntro");
-  }
+  // «закрыть» полностью закрывает окно — и из галереи, и со страницы девочки (v15.1):
+  // раньше со страницы девочки кнопка вела «← к девочкам» (лишний шаг назад)
+  stopGalleryScroll();
+  gachaGirl = null; gachaLog.textContent = "";
+  gachaOverlay.classList.remove("show");
+  if (TUT.step === "gachaClose") tutGoto("expIntro");
 });
 // тап по окну гачи во время анимации (рулетки/монтажа) — пропустить к результату (v13).
 // клики по тайлам/кнопкам гачи всплывают сюда (их обработчики выходят при rolling)
