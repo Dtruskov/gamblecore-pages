@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>GAMBLECORE — прототип</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<!-- Adsgram rewarded-реклама (ads.md): грузится рядом с TG SDK. Вне Telegram молча
+     недоступен — 🎬-точки деградируют к тест-выдаче (см. showAd в скрипте) -->
+<script src="https://sad.adsgram.ai/js/sad.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; }
@@ -836,7 +839,7 @@ const girl = gi => {
 /* ═══════════ состояние ═══════════ */
 const SAVE_V = 17;
 // версия билда — мелким текстом в футере (см. разметку футера)
-const BUILD = "v15.4 · 2026-06-15";
+const BUILD = "v16 · 2026-06-15";
 // джекпот — символ 🎰 на барабанах: независимый ролл на каждый спин. ~0.015 →
 // 1 из ~67 спинов ≈ 3 мин ручной игры (быстрее на турбо = больше рекламы). balance.md §8
 const JACKPOT_P = 0.015;
@@ -1060,6 +1063,31 @@ const vibrate = arg => {
     navigator.vibrate && navigator.vibrate(arg);
   } catch (e) {}
 };
+
+/* ═══════════ Adsgram rewarded-реклама (ads.md) ═══════════ */
+// ⚠️ ВСТАВЬ СЮДА BLOCK ID из кабинета Adsgram (Mini Apps → твоё приложение → Ad units →
+// Reward → скопировать «Block ID», формат вроде "int-1234" или "1234"). Пока стоит
+// плейсхолдер — реклама НЕ активна: 🎬-точки работают как тест (мгновенная выдача),
+// чтобы прототип открывался и тестился вне Telegram. Подставишь реальный ID → ads вкл.
+const ADSGRAM_BLOCK_ID = "PASTE_BLOCK_ID_HERE";
+let adController = null;
+try {
+  // init только если SDK загрузился И BLOCK_ID реально проставлен (не плейсхолдер)
+  if (window.Adsgram && ADSGRAM_BLOCK_ID.indexOf("PASTE_") !== 0) {
+    adController = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_ID });
+  }
+} catch (e) { adController = null; }
+// Показ rewarded-рекламы. КОНТРАКТ (ads.md §2): награда — ТОЛЬКО при полном досмотре.
+//   reward() — успех (досмотрел до конца) → выдать награду.
+//   fail()   — скип/закрытие/нет рекламы (no-fill) → БЕЗ награды, но без тупика.
+// Вне Adsgram (десктоп / BLOCK_ID не проставлен / SDK не загрузился) — мгновенная
+// выдача через reward() (тест-режим, как было до подключения). На этапе 1 это ок:
+// реальных денег у игрока нет (ads.md §2). К этапу 2 — серверный postback.
+function showAd(reward, fail) {
+  if (!adController) { reward(); return; }      // ads не настроены/недоступны → тест-выдача
+  adController.show().then(() => reward())       // resolve = досмотр до конца
+    .catch(() => { if (fail) fail(); });         // reject = скип/no-fill → без награды
+}
 
 /* ═══════════ маскот ═══════════ */
 const mface = document.getElementById("mface"), bubble = document.getElementById("bubble");
@@ -1719,15 +1747,18 @@ function doUpg() {
   if (TUT.step === "upgBuy") tutGoto("upgClose");
 }
 document.getElementById("upgHarda").addEventListener("click", doUpg);
-// 🎬 ad-buy: не хватает харды → реклама даёт прокачку бесплатно (тест, monetization.md)
+// 🎬 ad-buy: не хватает харды → rewarded-реклама → прокачка (ads.md §3, награда по досмотру)
 document.getElementById("upgAd").addEventListener("click", () => {
   if (S.upgCount >= UPG_MAX) return;
-  S.upgCount++; S.hardaMult += .5;
-  document.getElementById("upgLog").textContent = "🎬 Реклама! +50% к ХАРДЕ. Теперь x" + S.hardaMult;
-  sCoin(0); sCoin(2); vibrate(30);
-  emojiBurst("🎬", 10, false, document.getElementById("upgAd"));
-  update(); save();
-  if (TUT.step === "upgBuy") tutGoto("upgClose");
+  showAd(() => {
+    if (S.upgCount >= UPG_MAX) return;           // повторная проверка после показа
+    S.upgCount++; S.hardaMult += .5;
+    document.getElementById("upgLog").textContent = "🎬 Реклама! +50% к ХАРДЕ. Теперь x" + S.hardaMult;
+    sCoin(0); sCoin(2); vibrate(30);
+    emojiBurst("🎬", 10, false, document.getElementById("upgAd"));
+    update(); save();
+    if (TUT.step === "upgBuy") tutGoto("upgClose");
+  }, () => { document.getElementById("upgLog").textContent = "Реклама не загрузилась — попробуй позже"; });
 });
 
 /* ═══════════ перерождение ═══════════ */
@@ -2276,11 +2307,12 @@ gachaRoll.addEventListener("click", e => {
   if (k === 1) { S.harda -= cost; runRoll("💖", gachaRoll); }
   else runMulti(k);
 });
-// 🎬 ad-buy: не хватает на ролл → реклама даёт ролл бесплатно (тест, monetization.md)
+// 🎬 ad-buy: не хватает на ролл → rewarded-реклама → ролl (ads.md §3, награда по досмотру)
 gachaAd.addEventListener("click", e => {
   e.stopPropagation();
   if (rolling || gachaGirl !== null) return;
-  runRoll("🎬", gachaAd);
+  showAd(() => { if (!rolling && gachaGirl === null) runRoll("🎬", gachaAd); },
+    () => { gachaLog.textContent = "Реклама не загрузилась — попробуй позже"; });
 });
 
 // мульти-ролл: k роллов разом (вызывается единой кнопкой при k≥2). Исходы решены до
@@ -2419,7 +2451,8 @@ function buySpins(n) {           // бесплатно (тест): +n спино
   update(); save();
 }
 document.getElementById("spinsBuy").addEventListener("click", () => buySpins(SHOP_SPINS));
-document.getElementById("spinsAd").addEventListener("click", () => buySpins(SHOP_SPINS));
+// 🎬 +спины за rewarded-рекламу (ads.md §3) — выдача по досмотру; скип/no-fill → окно остаётся
+document.getElementById("spinsAd").addEventListener("click", () => showAd(() => buySpins(SHOP_SPINS)));
 document.getElementById("spinsClose").addEventListener("click", () => spinsOverlay.classList.remove("show"));
 
 /* ═══════════ джекпот: окно награды за рекламу (v12.2, balance.md §8, monetization.md §3a) ═══════════ */
@@ -2510,23 +2543,31 @@ function closeJackpot() {
   jackpotOverlay.classList.remove("show");
   jackpotLanded = false;           // слот снова можно крутить
 }
-function claimJackpot() {           // 🎬 реклама (заглушка) → насыпать награду
+function claimJackpot() {           // 🎬 rewarded-реклама → награда по досмотру (ads.md §3)
   if (!jpArmed) return;            // в первые JP_ARM_MS забор тапом игнорируется
+  // гасим авто-закрытие/таймер СРАЗУ: реклама ~15с > окна 5с, иначе оно закроется
+  // под рекламой. Слот остаётся заморожен (jackpotLanded) до конца показа
   clearTimeout(jpTimer); clearTimeout(jpArmTimer);
   stopJpCountdown();
-  jackpotVFXStop();
   const r = jpPending || jackpotReward();
-  S.harda += r.harda; S.totalWon += r.harda;
-  S.exp += r.exp;
-  const cr = Math.min(r.spins, SPINS_MAX - S.spins); // кап жёсткий
-  S.spins += cr;
-  jackpotOverlay.classList.remove("show");
-  jackpotLanded = false;           // слот снова можно крутить
-  bigCelebrate(); emojiBurst("💰", 28, true); say("bigwin", "🤩");
-  floatAt(document.getElementById("hardaVal").parentElement, `+${fmt(r.harda)} 🪙`, "#e8556d");
-  floatAt(document.getElementById("expVal").parentElement, `+${fmt(r.exp)} 🧿`, "#9fd64e");
-  if (cr > 0) floatAt(document.getElementById("spinsBar"), `+${cr} 🎲`, "#4db8e8");
-  update(); save();
+  showAd(() => {                   // досмотрел → насыпать награду
+    jackpotVFXStop();
+    S.harda += r.harda; S.totalWon += r.harda;
+    S.exp += r.exp;
+    const cr = Math.min(r.spins, SPINS_MAX - S.spins); // кап жёсткий
+    S.spins += cr;
+    jackpotOverlay.classList.remove("show");
+    jackpotLanded = false;         // слот снова можно крутить
+    bigCelebrate(); emojiBurst("💰", 28, true); say("bigwin", "🤩");
+    floatAt(document.getElementById("hardaVal").parentElement, `+${fmt(r.harda)} 🪙`, "#e8556d");
+    floatAt(document.getElementById("expVal").parentElement, `+${fmt(r.exp)} 🧿`, "#9fd64e");
+    if (cr > 0) floatAt(document.getElementById("spinsBar"), `+${cr} 🎲`, "#4db8e8");
+    update(); save();
+  }, () => {                       // скип/нет рекламы → без награды, просто закрываем (не тупик)
+    jackpotVFXStop();
+    jackpotOverlay.classList.remove("show");
+    jackpotLanded = false;
+  });
 }
 document.getElementById("jpClaim").addEventListener("click", claimJackpot);
 document.getElementById("jpClose").addEventListener("click", closeJackpot);
