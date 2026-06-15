@@ -230,28 +230,6 @@
   footer a { color: #6f717a; }
   #buildVer { margin-top: 2px; font-size: 9px; color: #4a4c54; letter-spacing: .3px; }
 
-  /* ═══ DEV-ПАНЕЛЬ — УДАЛИТЬ ПЕРЕД РЕЛИЗОМ (этот CSS + блок #devPanel в разметке + обработчики в JS) ═══ */
-  #devPanel {
-    /* прикреплена к нижней границе экрана, отделена от основного UI (v11) */
-    position: fixed; left: 50%; transform: translateX(-50%); bottom: 0; z-index: 9;
-    width: 100%; max-width: 440px;
-    display: flex; align-items: stretch; gap: 6px; padding: 6px;
-    border: 2px dashed #ffb300; border-radius: 8px 8px 0 0;
-    background: repeating-linear-gradient(45deg, #1a1607, #1a1607 8px, #221d05 8px, #221d05 16px);
-  }
-  #devPanel .devTag {
-    display: flex; align-items: center;
-    font: 700 10px/1 monospace; letter-spacing: 1px;
-    color: #1a1607; background: #ffb300; padding: 0 6px; border-radius: 3px;
-  }
-  #devPanel button {
-    flex: 1; padding: 7px 4px; cursor: pointer;
-    font: 600 11px monospace; color: #ffe08a;
-    background: #2a2308; border: 1px solid #ffb300; border-radius: 5px;
-  }
-  #devPanel button:active { transform: scale(.96); }
-  #devPanel #devWipe { color: #ff9a9a; border-color: #e8556d; background: #2a0d10; }
-  /* ═══ /DEV-ПАНЕЛЬ ═══ */
 
   /* ── modal ── */
   .overlay {
@@ -634,17 +612,6 @@
     <div id="buildVer"></div>
   </footer>
 
-  <!-- ═══ DEV-ПАНЕЛЬ — УДАЛИТЬ ПЕРЕД РЕЛИЗОМ (этот блок + #devPanel в CSS + секция «dev-кнопки» в JS) ═══ -->
-  <!-- скрыта; раскрывается 5 тапами по морде маскота (v12) -->
-  <div id="devPanel" style="display:none">
-    <span class="devTag">DEV</span>
-    <button id="devHarda">+ харды</button>
-    <button id="devExp">+ экспы</button>
-    <button id="devTickets">+ билетов</button>
-    <button id="devGfx">GFX: HIGH</button>
-    <button id="devWipe">стереть сейв ⟲</button>
-  </div>
-  <!-- ═══ /DEV-ПАНЕЛЬ ═══ -->
 </div>
 
 <!-- слой эффектов под окнами (см. CSS #fxUnder) — вне #app, чтобы shake-трансформ не ломал fixed-координаты -->
@@ -698,9 +665,8 @@
 <div class="overlay" id="spinsOverlay">
   <div class="sheet">
     <h2>Спины кончились 🎲</h2>
-    <p>Энергия на нуле. Подожди реген — или возьми ещё (бесплатно для теста):</p>
-    <button class="btn accent" id="spinsBuy">🎲 +25 спинов</button>
-    <button class="btn" id="spinsAd">🎬 +25 за рекламу</button>
+    <p>Энергия на нуле. Подожди реген — или возьми ещё за рекламу:</p>
+    <button class="btn accent" id="spinsAd">🎬 +25 за рекламу</button>
     <button class="btn" id="spinsClose">закрыть</button>
   </div>
 </div>
@@ -839,7 +805,7 @@ const girl = gi => {
 /* ═══════════ состояние ═══════════ */
 const SAVE_V = 17;
 // версия билда — мелким текстом в футере (см. разметку футера)
-const BUILD = "v16.4 · 2026-06-15";
+const BUILD = "v16.5 · 2026-06-15";
 // джекпот — символ 🎰 на барабанах: независимый ролл на каждый спин. ~0.015 →
 // 1 из ~67 спинов ≈ 3 мин ручной игры (быстрее на турбо = больше рекламы). balance.md §8
 const JACKPOT_P = 0.015;
@@ -1110,18 +1076,6 @@ function say(kind, face) {
   sayTimer = setTimeout(() => { mface.textContent = "😺"; say.idleAt = Date.now(); }, 3500);
 }
 setInterval(() => { if (!spinning && Math.random() < .25) say("idle"); }, 12000);
-
-// DEV-панель скрыта; 5 тапов по морде маскота ТОГГЛЯТ её (откр/закр) (v13, убрать перед релизом)
-let devTaps = 0;
-mface.addEventListener("click", () => {
-  if (++devTaps < 5) return;
-  devTaps = 0;
-  const dp = document.getElementById("devPanel");
-  const opening = dp.style.display === "none";
-  dp.style.display = opening ? "flex" : "none";
-  bubble.textContent = opening ? "🛠 DEV-панель открыта" : "🛠 DEV-панель скрыта";
-  mface.classList.remove("pop"); void mface.offsetWidth; mface.classList.add("pop");
-});
 
 /* ═══════════ барабаны ═══════════ */
 const randSym = () => {
@@ -2450,12 +2404,11 @@ shopBody.addEventListener("click", e => {
 
 /* ═══════════ окно «спины кончились» (v11) ═══════════ */
 const spinsOverlay = document.getElementById("spinsOverlay");
-function buySpins(n) {           // бесплатно (тест): +n спинов, кап жёсткий
+function buySpins(n) {           // +n спинов (за рекламу), кап жёсткий
   S.spins += Math.min(n, SPINS_MAX - S.spins);
   spinsOverlay.classList.remove("show");
   update(); save();
 }
-document.getElementById("spinsBuy").addEventListener("click", () => buySpins(SHOP_SPINS));
 // 🎬 +спины за rewarded-рекламу (ads.md §3) — выдача по досмотру; скип/no-fill → окно остаётся
 document.getElementById("spinsAd").addEventListener("click", () => showAd(() => buySpins(SHOP_SPINS)));
 document.getElementById("spinsClose").addEventListener("click", () => spinsOverlay.classList.remove("show"));
@@ -2827,25 +2780,6 @@ document.getElementById("resetLink").addEventListener("click", e => {
   if (confirm("Сбросить весь прогресс прототипа?")) wipeSave();
 });
 
-/* ═══════════ DEV-КНОПКИ — УДАЛИТЬ ПЕРЕД РЕЛИЗОМ (этот блок + #devPanel в CSS и разметке) ═══════════ */
-// выдача масштабируется с уровнем перерождения, чтобы оставаться полезной на лейте
-document.getElementById("devHarda").addEventListener("click", () => {
-  S.harda += 10000 * global(); update(); save();
-});
-document.getElementById("devExp").addEventListener("click", () => {
-  S.exp += Math.round(goal() * 0.5); update(); save();
-});
-document.getElementById("devTickets").addEventListener("click", () => {
-  S.tickets += 20; update();
-  if (rouletteOverlay.classList.contains("show")) updateRoulette();
-  save();
-});
-// v13.6: ручной тоггл тира графики (для теста на устройстве; авто-детект — gfxSample)
-document.getElementById("devGfx").addEventListener("click", () => setGfx(!GFX_LOW));
-document.getElementById("devWipe").addEventListener("click", () => {
-  if (confirm("DEV: стереть сейв и начать с нуля?")) wipeSave();
-});
-
 /* ═══════════ отрисовка ═══════════ */
 function update() {
   // прогрессивное раскрытие UI (v15): бары и кнопки видны только после своей вехи
@@ -2935,8 +2869,6 @@ function update() {
 }
 
 document.getElementById("buildVer").textContent = "build " + BUILD;
-// подпись DEV-кнопки = начальный тир (без записи в localStorage — это лишь догадка) (v13.6)
-document.getElementById("devGfx").textContent = "GFX: " + (GFX_LOW ? "LOW" : "HIGH");
 regen(); update();
 if (tg) {                                  // Telegram Mini App: на весь экран, свайп-вниз не закрывает (мешал бы рычагу)
   tg.ready(); tg.expand();
