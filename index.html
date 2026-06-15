@@ -361,7 +361,10 @@
   /* гача-окно одинакового размера на всех вкладках (крутки / замок / карточки), v13:
      фикс-высота, скроллится только тело — окно не «прыгает» при переключении */
   #gachaOverlay .sheet { height: min(86vh, 600px); overflow: hidden; }
-  #gachaBody { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
+  /* padding-инсет (v15.2): #gachaBody — скролл-контейнер (overflow-y:auto → x клипает),
+     светящаяся рамка крайних тайлов (.sel/.done/.gplat, box-shadow до 16px) обрезалась
+     краем окна. Инсет ≥ радиуса свечения → рамка помещается в padding-box, не режется */
+  #gachaBody { flex: 1 1 auto; overflow-y: auto; min-height: 0; padding: 16px; }
   /* кнопки гачи (РОЛЛ/мульти/🎬/закрыть) — фикс-высота, не растягиваются по числу
      видимых: «закрыть» одинаков на крутках/замке/карточках (.btn по умолчанию flex:1
      в колонке тянулся бы по-разному). v13.1 */
@@ -829,7 +832,7 @@ const girl = gi => {
 /* ═══════════ состояние ═══════════ */
 const SAVE_V = 17;
 // версия билда — мелким текстом в футере (см. разметку футера)
-const BUILD = "v15.1 · 2026-06-15";
+const BUILD = "v15.2 · 2026-06-15";
 // джекпот — символ 🎰 на барабанах: независимый ролл на каждый спин. ~0.015 →
 // 1 из ~67 спинов ≈ 3 мин ручной игры (быстрее на турбо = больше рекламы). balance.md §8
 const JACKPOT_P = 0.015;
@@ -1005,6 +1008,11 @@ const platMult = () => 1 + 0.05 * S.plat.filter(Boolean).length;
 const turboActive = () => S.turboUntil > Date.now();
 const turboMul = () => !turboActive() ? AUTO_DURMUL : (S.turboTier >= 2 ? TURBO_T2 : TURBO_T1);
 const tempMult = () => S.mult2Until > Date.now() ? BUFF_MULT : 1;
+// туториальный буст опыта (v15.2): первые 3 уровня перерождения копятся быстрее, чтобы
+// обучающая секция (автоспин на 2-м престиже, рулетка на 3-м) не тянулась; на L4+ —
+// норма. Бьёт ТОЛЬКО опыт (пассив + тройки), харду/спины не трогает. balance.md §4
+const TUT_EXP_BOOST = 2;
+const expBoost = () => S.level <= 3 ? TUT_EXP_BOOST : 1;
 // без оператора ?? — он требует Chrome 80+ и валит парсинг скрипта на старых
 // webview (игра не открывалась на части устройств), всё дальше тоже мёртвое
 const goal = () => { const g = GOALS[S.level - 1]; return g != null ? g : GOALS[GOALS.length - 1] * 2.5 ** (S.level - GOALS.length); };
@@ -1345,8 +1353,9 @@ async function doSpin(durMul, handY) {
   const won = evaluate();
   // прогрев был, а выигрыша нет — «вздох» третьего барабана вместо тишины
   if (heatSym && !won) nearMiss();
-  // пассивная экспа: бар перерождения ползёт каждый спин (balance.md §4); ×2 от буста
-  S.exp += Math.round(EXP_PASSIVE * global() * platMult() * tempMult());
+  // пассивная экспа: бар перерождения ползёт каждый спин (balance.md §4); ×2 от буста,
+  // ×expBoost() на первых 3 уровнях (туториальная секция быстрее, v15.2)
+  S.exp += Math.round(EXP_PASSIVE * global() * platMult() * tempMult() * expBoost());
   spinning = false;
   update(); deferSave(); // сейв за кадр — не блокирует пейнт победы (v13.6)
   if (TUT.active) tutOnSpinEnd();
@@ -1460,7 +1469,7 @@ function evaluate() {
   // джекпот 3×⚡: базовые выплаты всех трёх ресурсов разом (balance.md §1a)
   if (wins.length === 3) {
     const h = Math.round(SYMS[0].pay * g * S.hardaMult * tempMult());
-    const e = Math.round(SYMS[1].pay * g * platMult() * tempMult());
+    const e = Math.round(SYMS[1].pay * g * platMult() * tempMult() * expBoost());
     const credited = Math.min(SYMS[2].pay, SPINS_MAX - S.spins); // кап жёсткий
     S.harda += h; S.totalWon += h; S.exp += e; S.spins += credited;
     winTxt.textContent = `⚡ СУПЕР-ВИН! +${fmt(h)} 🪙 +${fmt(e)} 🧿` + (credited > 0 ? ` +${credited} 🎲` : "");
@@ -1486,7 +1495,7 @@ function evaluate() {
     for (let i = 0; i < 4; i++) sCoin(i);
     if (Math.random() < .4) say("win", "😸");
   } else if (sym.id === "exp") {
-    const amt = Math.round(sym.pay * g * platMult() * tempMult());
+    const amt = Math.round(sym.pay * g * platMult() * tempMult() * expBoost());
     S.exp += amt;
     winCount("🔥 BIG WIN +", amt, " экспы");
     goldFlash();
@@ -2648,14 +2657,14 @@ function tutRender() {
       // веха: +5 спинов после автоспина → магазин + подарок-турбо (v15)
       TUT.force = null;
       tutShow(document.getElementById("shopBtn"),
-        "🛒 Открыт МАГАЗИН бустов! Держи подарок: турбо-автоспин на 5 минут 🚀 (тапни)",
+        "🛒 Открыт МАГАЗИН бустов! Подарок: ТУРБО-автоспин на максимуме (×2 быстрее руки) на 1 мин 🚀 В магазине берётся дважды — за 2 рекламы (тапни)",
         { paw: true, tapAnywhere: true });
       break;
     case "rouletteTut":
       // веха: 3-е перерождение → Рулетка экспы (v15)
       TUT.force = null;
       tutShow(document.getElementById("rouletteBtn"),
-        "🎟️ Открыта РУЛЕТКА ЭКСПЫ! Крути билеты — выигрывай опыт, когда его мало (тапни)",
+        "🎟️ Открыта РУЛЕТКА ЭКСПЫ! Держи бесплатный билет 🎟️ — крути и выигрывай опыт, когда его мало (тапни)",
         { paw: true, tapAnywhere: true });
       break;
   }
@@ -2723,13 +2732,16 @@ function startAutoTut() {
 }
 function startShopTut() {
   S.shopUnlocked = true;
-  // подарок: бесплатный турбо-автоспин на 5 минут (тир1 = скорость руки) — balance.md §7
-  S.turboUntil = Date.now() + FIVE_MIN; S.turboTier = 1;
+  // подарок: турбо-автоспин на МАКСИМУМЕ (тир2 = ×2 быстрее руки) на 1 минуту (v15.2).
+  // В магазине этот инап берётся дважды — за 2 просмотра рекламы (отражено в туторе)
+  S.turboUntil = Date.now() + 60 * 1000; S.turboTier = 2;
   update();
   TUT.active = true; tutGoto("shopTut");
 }
 function startRouletteTut() {
-  S.rouletteUnlocked = true; update();
+  S.rouletteUnlocked = true;
+  S.tickets += 1; // бесплатный билет — чтобы было чем крутить прямо в туторе (v15.2)
+  update();
   TUT.active = true; tutGoto("rouletteTut");
 }
 // вехи онбординга после основного туториала (v15): по одному мини-тутору за раз.
