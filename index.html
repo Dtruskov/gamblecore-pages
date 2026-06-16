@@ -238,45 +238,60 @@
   #buildVer { margin-top: 2px; font-size: 9px; color: #4a4c54; letter-spacing: .3px; }
 
 
-  /* ── Созвездие — оверлей мета-лабиринта (constellation.md §5) ── */
+  /* ── Созвездие — полноэкранный оверлей мета-лабиринта (constellation.md §5) ── */
+  #cslOverlay { z-index: 12; }
   #cslOverlay .cslWrap {
-    position: relative; width: min(96%, 460px); height: 88vh;
-    background: #05060f; border-radius: 16px; overflow: hidden;
-    display: flex; flex-direction: column;
+    position: relative; width: 100%; height: 100%;
+    background: #05060f; overflow: hidden; display: flex; flex-direction: column;
   }
-  .cslHud {
+  /* верхняя панель: счётчик ходов + крупная «закрыть» с крестиком и текстом */
+  .cslTop {
     position: absolute; top: 0; left: 0; right: 0; z-index: 6;
-    display: flex; align-items: center; gap: 8px; padding: 10px 12px;
-    background: linear-gradient(#05060fee, #05060f00);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 12px 14px; background: linear-gradient(#05060fee, #05060f00);
   }
-  #cslMoves { font-weight: 700; font-size: 14px; color: #cfe3ff; }
-  .cslHud .btn { flex: 0 0 auto; padding: 8px 10px; font-size: 12px; }
+  #cslMoves { font-weight: 800; font-size: 17px; color: #cfe3ff; }
   #cslClose {
-    margin-left: auto; flex: 0 0 auto; border: none; background: #ffffff22;
-    color: #cfe3ff; font-size: 15px; font-weight: 700; width: 34px; height: 34px;
-    border-radius: 50%; cursor: pointer; font-family: inherit;
+    flex: 0 0 auto; border: none; background: #ffffff1f;
+    color: #cfe3ff; font-size: 15px; font-weight: 800;
+    padding: 10px 16px; border-radius: 12px; cursor: pointer; font-family: inherit;
   }
+  #cslClose:active { transform: scale(.96); }
   .cslScroll { flex: 1; overflow-y: auto; overflow-x: hidden; position: relative; -webkit-overflow-scrolling: touch; }
   .cslContent { position: relative; width: 100%; }
+  /* туман над фронтиром (верх) — лёгкий, фон уже звёздное небо */
   .cslFog {
-    position: absolute; top: 0; left: 0; right: 0; height: 38%; z-index: 4;
-    pointer-events: none; background: linear-gradient(#05060f 0%, #05060fcc 42%, #05060f00 100%);
+    position: absolute; top: 0; left: 0; right: 0; height: 26%; z-index: 4;
+    pointer-events: none; background: linear-gradient(#05060f 0%, #05060f99 45%, #05060f00 100%);
   }
+  /* нижняя панель: крупная кнопка «+1 ход за рекламу» */
+  .cslBottom {
+    position: absolute; bottom: 0; left: 0; right: 0; z-index: 6;
+    padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+    background: linear-gradient(#05060f00, #05060fee 40%);
+  }
+  #cslAd {
+    width: 100%; border: none; border-radius: 14px; cursor: pointer; font-family: inherit;
+    font-size: 17px; font-weight: 800; padding: 16px 10px;
+    background: #e8556d; color: #fff;
+  }
+  #cslAd:active { transform: scale(.98); }
+  #cslAd:disabled { background: #2a2d36; color: #6f717a; cursor: default; }
   .cslHint {
-    position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
-    z-index: 6; background: #000000cc; color: #ffd34d; font-weight: 700;
-    font-size: 13px; padding: 8px 14px; border-radius: 10px; opacity: 0;
-    transition: opacity .25s; pointer-events: none; text-align: center; max-width: 80%;
+    position: absolute; left: 50%; bottom: 86px; transform: translateX(-50%);
+    z-index: 7; background: #000000d9; color: #ffd34d; font-weight: 700;
+    font-size: 13px; padding: 9px 16px; border-radius: 10px; opacity: 0;
+    transition: opacity .25s; pointer-events: none; text-align: center; max-width: 84%;
   }
   .cslHint.show { opacity: 1; }
   .cslStar { position: absolute; border-radius: 50%; background: #fff; pointer-events: none; }
-  .cslStar.tw { animation: cslTwinkle 2.4s ease-in-out infinite; }
-  @keyframes cslTwinkle { 50% { opacity: .25; } }
+  .cslStar.tw { animation: cslTwinkle 2.6s ease-in-out infinite; }
+  @keyframes cslTwinkle { 50% { opacity: .2; } }
   .cslNode {
     position: absolute; transform: translate(-50%, -50%);
-    width: 34px; height: 34px; border-radius: 50%;
+    width: 38px; height: 38px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-size: 17px; line-height: 1; user-select: none;
+    font-size: 19px; line-height: 1; user-select: none;
     border: 2px solid transparent; background: #141d3a; color: #8a93b5;
   }
   .cslNode.lit { box-shadow: 0 0 12px currentColor; border-color: currentColor; }
@@ -285,15 +300,41 @@
     content: ""; position: absolute; inset: -7px; border-radius: 50%;
     border: 2px solid #cfe3ff; opacity: .7; animation: cslPulse 1.2s ease infinite;
   }
-  .cslNode.fog { opacity: .34; filter: blur(1px); }
-  .cslNode.deep { opacity: .14; filter: blur(2.5px); }
+  /* заблокированная ветка развилки (выбрали соперника) — серый замок, не кликается */
+  .cslNode.blocked { opacity: .5; filter: grayscale(1); border-color: #4a4d57; background: #1a1d26; cursor: not-allowed; }
+  .cslNode.fog { opacity: .36; filter: blur(1px); }
+  .cslNode.deep { opacity: .15; filter: blur(2.5px); }
   @keyframes cslPulse { 50% { box-shadow: 0 0 16px #fff; transform: translate(-50%,-50%) scale(1.12); } }
   /* GFX_LOW: без свечения/пульса/блюра/твинкла — плоско, дёшево по пейнту (§5) */
   .cslWrap.gfxlow .cslNode { animation: none !important; box-shadow: none !important; filter: none !important; }
+  .cslWrap.gfxlow .cslNode.blocked { filter: grayscale(1) !important; }
   .cslWrap.gfxlow .cslNode.frontier::after { animation: none; }
   .cslWrap.gfxlow .cslStar { animation: none !important; }
   .cslWrap.gfxlow .cslNode.fog { opacity: .42; }
   .cslWrap.gfxlow .cslNode.deep { opacity: .22; }
+
+  /* ═══ DEV-ПАНЕЛЬ — УДАЛИТЬ ПЕРЕД РЕЛИЗОМ (этот CSS + блок #devPanel в разметке + обработчики в JS) ═══ */
+  #devPanel {
+    /* прикреплена к нижней границе экрана, отделена от основного UI (v11) */
+    position: fixed; left: 50%; transform: translateX(-50%); bottom: 0; z-index: 9;
+    width: 100%; max-width: 440px;
+    display: flex; align-items: stretch; gap: 6px; padding: 6px;
+    border: 2px dashed #ffb300; border-radius: 8px 8px 0 0;
+    background: repeating-linear-gradient(45deg, #1a1607, #1a1607 8px, #221d05 8px, #221d05 16px);
+  }
+  #devPanel .devTag {
+    display: flex; align-items: center;
+    font: 700 10px/1 monospace; letter-spacing: 1px;
+    color: #1a1607; background: #ffb300; padding: 0 6px; border-radius: 3px;
+  }
+  #devPanel button {
+    flex: 1; padding: 7px 4px; cursor: pointer;
+    font: 600 11px monospace; color: #ffe08a;
+    background: #2a2308; border: 1px solid #ffb300; border-radius: 5px;
+  }
+  #devPanel button:active { transform: scale(.96); }
+  #devPanel #devWipe { color: #ff9a9a; border-color: #e8556d; background: #2a0d10; }
+  /* ═══ /DEV-ПАНЕЛЬ ═══ */
 
   /* ── modal ── */
   .overlay {
@@ -677,6 +718,18 @@
     <div id="buildVer"></div>
   </footer>
 
+  <!-- ═══ DEV-ПАНЕЛЬ — УДАЛИТЬ ПЕРЕД РЕЛИЗОМ (этот блок + #devPanel в CSS + секция «dev-кнопки» в JS) ═══ -->
+  <!-- скрыта; раскрывается 5 тапами по морде маскота (v12) -->
+  <div id="devPanel" style="display:none">
+    <span class="devTag">DEV</span>
+    <button id="devHarda">+ харды</button>
+    <button id="devExp">+ экспы</button>
+    <button id="devTickets">+ билетов</button>
+    <button id="devGfx">GFX: HIGH</button>
+    <button id="devWipe">стереть сейв ⟲</button>
+  </div>
+  <!-- ═══ /DEV-ПАНЕЛЬ ═══ -->
+
 </div>
 
 <!-- слой эффектов под окнами (см. CSS #fxUnder) — вне #app, чтобы shake-трансформ не ломал fixed-координаты -->
@@ -766,14 +819,14 @@
 
 <div class="overlay" id="cslOverlay">
   <div class="cslWrap">
-    <div class="cslHud">
+    <div class="cslTop">
       <span id="cslMoves">🔆 ходов: 0</span>
-      <button class="btn accent" id="cslAd">🎬 +1 ход</button>
-      <button id="cslClose">✕</button>
+      <button id="cslClose">✕ Закрыть</button>
     </div>
     <div class="cslScroll" id="cslScroll"><div class="cslContent" id="cslContent"></div></div>
     <div class="cslFog"></div>
     <div class="cslHint" id="cslHint"></div>
+    <div class="cslBottom"><button id="cslAd">🎬 +1 ход за рекламу</button></div>
   </div>
 </div>
 
@@ -863,9 +916,20 @@ const SPECIAL_PAIR_P = 0.5;
 const TICKET_BASE = 1600;              // цена билета = TICKET_BASE × global() харды
 const TICKET_DROP_P = 0.012;           // шанс уронить билет на проигрышном спине (~1/83)
 const ticketCost = () => Math.round(TICKET_BASE * global());
-// сегменты колеса — доли goal(): равные слайсы (исход 1/12), min 0.02, max 0.25 = джекпот
-const ROULETTE = [0.02, 0.06, 0.03, 0.13, 0.02, 0.04, 0.09, 0.03, 0.25, 0.02, 0.06, 0.04];
-const rouletteExp = frac => Math.round(frac * goal());
+// сегменты колеса (равные слайсы 1/12). Каждый: m = множитель ТЕКУЩЕГО слот-выигрыша
+// экспы (рулетка ВСЕГДА даёт больше слота, т.к. m>1), g = доля goal() — флор на лейте,
+// где goal обгоняет M и m×слот проседает. Награда = max(m×слот, g×goal). Один джекпот 💎,
+// больше 🔥 и 🌟, меньше базовых 🧿 (запрос автора 2026-06-16).
+const ROULETTE = [
+  { m: 1.4, g: 0.03 }, { m: 2.2, g: 0.06 }, { m: 1.4, g: 0.03 },
+  { m: 3.5, g: 0.11 }, { m: 2.2, g: 0.06 }, { m: 3.5, g: 0.11 },
+  { m: 2.2, g: 0.06 }, { m: 1.4, g: 0.03 }, { m: 10,  g: 0.25 },
+  { m: 3.5, g: 0.11 }, { m: 2.2, g: 0.06 }, { m: 3.5, g: 0.11 },
+]; // 💎×1, 🔥×4, 🌟×4, 🧿×3
+// базовый слот-выигрыш экспы = выплата тройки 🧿 (формула из evaluate) — рулетка считается от него
+const slotExpWin = () => Math.round(SYMS[1].pay * global() * platMult() * tempMult() * expBoost() * metaBonus.expMul);
+const rouletteExp = seg => Math.max(Math.round(seg.m * slotExpWin()), Math.round(seg.g * goal()));
+const rltIsJackpot = seg => seg.m >= 10;
 // девочки бесконечны (v13): страница = 9 девочек, имя/аватар генерятся по глобальному
 // индексу. Пулы разной длины → комбинации имя+аватар не повторяются на ранних страницах
 const GIRL_NAMES = ["Юки","Аска","Рин","Мика","Хана","Сора","Юмэ","Рэй","Сакура",
@@ -883,7 +947,7 @@ const girl = gi => {
 /* ═══════════ состояние ═══════════ */
 const SAVE_V = 17;
 // версия билда — мелким текстом в футере (см. разметку футера)
-const BUILD = "v16.6 · 2026-06-16";
+const BUILD = "v16.7 · 2026-06-16";
 // джекпот — символ 🎰 на барабанах: независимый ролл на каждый спин. ~0.015 →
 // 1 из ~67 спинов ≈ 3 мин ручной игры (быстрее на турбо = больше рекламы). balance.md §8
 const JACKPOT_P = 0.015;
@@ -910,7 +974,9 @@ const DEFAULTS = () => ({
   // узлов, moves — банк ходов, seen — макс. достигнутый tier. Переживает перерождение
   // (мета, не ран-прогресс). SAVE_V НЕ бампали — поле добавляется с дефолтом (узел 0 =
   // стартовый «корень», уже зажжён, без бонуса). metaBonus НЕ хранится — считается из lit.
-  csl: { lit: [0], moves: 0, seen: 0 },
+  // adUsed — взят ли бесплатный ход за рекламу в текущем ране (сброс при перерождении):
+  // рекламу на ход можно посмотреть 1 раз за ран, бесконечно фармить нельзя (запрос автора)
+  csl: { lit: [0], moves: 0, seen: 0, adUsed: false },
   // прогрессивное раскрытие UI (v15, 2026-06-15): на старте видны только кот+барабаны+
   // рука; бары и кнопки открываются по ходу обучения (tutorial.md). Флаги аддитивны —
   // старые сейвы грандфазерятся в load() (всё открыто). obSpins — счётчик спинов после
@@ -1160,6 +1226,18 @@ function say(kind, face) {
   sayTimer = setTimeout(() => { mface.textContent = "😺"; say.idleAt = Date.now(); }, 3500);
 }
 setInterval(() => { if (!spinning && Math.random() < .25) say("idle"); }, 12000);
+
+// DEV-панель скрыта; 5 тапов по морде маскота ТОГГЛЯТ её (откр/закр) (v13, убрать перед релизом)
+let devTaps = 0;
+mface.addEventListener("click", () => {
+  if (++devTaps < 5) return;
+  devTaps = 0;
+  const dp = document.getElementById("devPanel");
+  const opening = dp.style.display === "none";
+  dp.style.display = opening ? "flex" : "none";
+  bubble.textContent = opening ? "🛠 DEV-панель открыта" : "🛠 DEV-панель скрыта";
+  mface.classList.remove("pop"); void mface.offsetWidth; mface.classList.add("pop");
+});
 
 /* ═══════════ барабаны ═══════════ */
 const randSym = () => {
@@ -1752,10 +1830,10 @@ setInterval(() => {
 
 /* ═══════════ реген спинов ═══════════ */
 function regen() {
-  const now = Date.now(), ms = regenMs(); // spins-узлы Созвездия ускоряют реген (regenMs)
+  const now = Date.now();
   if (S.spins >= SPINS_MAX) { S.lastRegen = now; return; }
-  while (now - S.lastRegen >= ms && S.spins < SPINS_MAX) {
-    S.spins++; S.lastRegen += ms;
+  while (now - S.lastRegen >= REGEN_MS && S.spins < SPINS_MAX) {
+    S.spins++; S.lastRegen += REGEN_MS;
   }
   if (S.spins >= SPINS_MAX) S.lastRegen = now;
 }
@@ -1822,7 +1900,7 @@ document.getElementById("rbGo").addEventListener("click", () => {
   S.level++; S.exp = 0;
   S.upgCount = 0; S.hardaMult = 1;
   S.spins = SPINS_MAX;
-  S.csl.moves++; // +1 ход в Созвездие за перерождение (constellation.md §4) — узлы НЕ гасятся
+  S.csl.moves++; S.csl.adUsed = false; // +1 ход за перерождение; снова доступен ход за рекламу (1/ран)
   S.obSpins = 0; // веха: считаем спины после перерождения заново (автоспин на 3-м, v15)
   // перезрел → стартовая харда: тир × цена ролла УЖЕ нового уровня (balance.md §4)
   S.harda = tiers * rollCost();
@@ -1847,25 +1925,24 @@ const rltSpinBtn = document.getElementById("rltSpin"), rltAllBtn = document.getE
 const wheelEl = document.getElementById("wheel");
 let wheelRot = 0; // накопленный угол колеса — всегда крутим вперёд
 
-// смайлик сектора (вместо суммы — числа выглядели странно, balance.md §10): обычный
-// выигрыш = смайлик опыта, бигвины — покруче; джекпот-сектор (0.25) — самый крутой
-const rouletteEmoji = f => f >= 0.25 ? "💎" : f >= 0.13 ? "🔥" : f >= 0.07 ? "🌟" : "🧿";
-// строим колесо — все секторы фиолетовые, ОДИН жёлтый бигвин (0.25) — при открытии
+// смайлик сектора по тиру (m): джекпот 💎 (×10), 🔥 (×3+), 🌟 (×2+), базовый 🧿
+const rouletteEmoji = seg => seg.m >= 10 ? "💎" : seg.m >= 3 ? "🔥" : seg.m >= 2 ? "🌟" : "🧿";
+// строим колесо — все секторы фиолетовые, ОДИН жёлтый бигвин (💎) — при открытии
 function buildWheel() {
   const slice = 360 / ROULETTE.length;
-  const stops = ROULETTE.map((f, i) => {
-    const c = f >= 0.25 ? "#e0b53a" : (i % 2 ? "#5a2c8a" : "#7a3fb0"); // один жёлтый бигвин, остальные фиолетовые
+  const stops = ROULETTE.map((seg, i) => {
+    const c = rltIsJackpot(seg) ? "#e0b53a" : (i % 2 ? "#5a2c8a" : "#7a3fb0"); // один жёлтый бигвин, остальные фиолетовые
     return `${c} ${i * slice}deg ${(i + 1) * slice}deg`;
   });
   wheelEl.style.background = `conic-gradient(${stops.join(",")})`;
   wheelEl.querySelectorAll(".wlabel").forEach(e => e.remove());
-  ROULETTE.forEach((f, i) => {
+  ROULETTE.forEach((seg, i) => {
     const ang = i * slice + slice / 2;
     const lab = document.createElement("div");
     lab.className = "wlabel";
     // встать у внешнего радиуса под углом сектора, смайлик оставить вертикальным
     lab.style.transform = `rotate(${ang}deg) translateY(-92px) rotate(${-ang}deg)`;
-    lab.innerHTML = `<span>${rouletteEmoji(f)}</span>`;
+    lab.innerHTML = `<span>${rouletteEmoji(seg)}</span>`;
     wheelEl.appendChild(lab);
   });
 }
@@ -1930,7 +2007,7 @@ function rltSpinOne() {
   const idx = Math.floor(Math.random() * ROULETTE.length);
   emojiBurst("🎟️", 8, false, rltSpinBtn);
   spinWheelTo(idx, 4200, () => {
-    const gain = rouletteExp(ROULETTE[idx]), jp = ROULETTE[idx] >= 0.25;
+    const gain = rouletteExp(ROULETTE[idx]), jp = rltIsJackpot(ROULETTE[idx]);
     S.exp += gain;
     sThud();
     const wrap = document.getElementById("wheelWrap");
@@ -1960,7 +2037,7 @@ function rltSpinAll() {
   for (let i = 0; i < k; i++) {
     const idx = Math.floor(Math.random() * ROULETTE.length);
     total += rouletteExp(ROULETTE[idx]);
-    if (ROULETTE[idx] >= 0.25) jackpots++;
+    if (rltIsJackpot(ROULETTE[idx])) jackpots++;
     lastIdx = idx;
   }
   S.exp += total; save();
@@ -1994,7 +2071,8 @@ rltAllBtn.addEventListener("click", rltSpinAll);
 // Топология детерминирована (PRNG с фикс-сидом) — одинакова у всех и стабильна между
 // сессиями (никакого Math.random в раскладке). Весь визуал рисуется кодом (SVG/CSS).
 const CSL_SEED = 1337;
-const CSL_TYPES = { spins: { c: "#f2a623", e: "⚡" }, exp: { c: "#2ec4b6", e: "✨" }, harda: { c: "#e8c14a", e: "🪙" } };
+// узлы дают опыт или харду — иконки те же, что на барабанах (🧿 экспа / 🪙 харда), запрос автора
+const CSL_TYPES = { exp: { c: "#6cc7d6", e: "🧿" }, harda: { c: "#e8c14a", e: "🪙" } };
 // mulberry32 — детерминированный PRNG; без ?? и прочего ES2020, чтобы парсилось на старых webview
 function cslMul(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 let _cslRng = null, _cslNodes = [], _cslSpine = 0;
@@ -2004,24 +2082,27 @@ function cslInitGen() {
   _cslNodes.push({ id: 0, tier: 0, type: null, val: 0, x: 0, parents: [], children: [] });
   _cslSpine = 0;
 }
-// тип узла с лёгким перекосом, но все три встречаются (constellation.md §2)
-function cslType() { const r = _cslRng(); return r < 0.30 ? "spins" : r < 0.64 ? "exp" : "harda"; }
+// тип узла (опыт/харда), оба встречаются
+function cslType() { return _cslRng() < 0.5 ? "exp" : "harda"; }
 // val мягко растёт с tier (база ×(1+tier·0.02)); числа скромные (constellation.md §3)
-function cslVal(type, tier) { const base = type === "spins" ? 0.05 : 0.03; return Math.round(base * (1 + tier * 0.02) * 1e4) / 1e4; }
+function cslVal(type, tier) { return Math.round(0.03 * (1 + tier * 0.02) * 1e4) / 1e4; }
 function cslAdd(tier, type, x, parents) {
   const id = _cslNodes.length;
-  _cslNodes.push({ id, tier, type, val: type ? cslVal(type, tier) : 0, x, parents: parents.slice(), children: [] });
+  _cslNodes.push({ id, tier, type, val: type ? cslVal(type, tier) : 0, x, parents: parents.slice(), children: [], rival: null });
   parents.forEach(p => _cslNodes[p].children.push(id));
   return id;
 }
-// нарастить лабиринт на один сегмент от текущего «спайна» (фронтир-слияния)
+// нарастить лабиринт на один сегмент от текущего «спайна»
 function cslGrow() {
   const t0 = _cslNodes[_cslSpine].tier;
-  if (_cslRng() < 0.45) {                 // развилка: 2 ветки длины k → сходятся в узле-слиянии
-    const k = _cslRng() < 0.5 ? 2 : 3;
-    let a = _cslSpine, b = _cslSpine;
-    for (let i = 1; i <= k; i++) { a = cslAdd(t0 + i, cslType(), -0.6, [a]); b = cslAdd(t0 + i, cslType(), 0.6, [b]); }
-    _cslSpine = cslAdd(t0 + k + 1, cslType(), 0, [a, b]); // слияние доступно только когда обе ветки пройдены
+  if (_cslRng() < 0.45) {                 // развилка-ВЫБОР: 2 узла-варианта (разных типов),
+    // игрок берёт ОДИН → второй блокируется навсегда, путь идёт дальше (запрос автора 2026-06-16)
+    const t1 = cslType(), t2 = t1 === "exp" ? "harda" : "exp";
+    const o1 = cslAdd(t0 + 1, t1, -0.55, [_cslSpine]);
+    const o2 = cslAdd(t0 + 1, t2, 0.55, [_cslSpine]);
+    _cslNodes[o1].rival = o2; _cslNodes[o2].rival = o1; // взаимоисключающие соперники
+    // слияние доступно, как только выбран ЛЮБОЙ из вариантов (OR — choose-one)
+    _cslSpine = cslAdd(t0 + 2, cslType(), 0, [o1, o2]);
   } else {                                 // линейный сегмент: 1 узел с лёгким вилянием x
     _cslSpine = cslAdd(t0 + 1, cslType(), _cslRng() * 1.2 - 0.6, [_cslSpine]);
   }
@@ -2033,25 +2114,24 @@ function cslEnsureTier(maxTier) {
   while (_cslNodes[_cslSpine].tier < maxTier && guard++ < 400) cslGrow();
 }
 const cslLit = id => S.csl.lit.indexOf(id) >= 0;
-// доступный (фронтир-выбор): не зажжён, но ВСЕ родители зажжены
-const cslAvail = id => !cslLit(id) && nodeAt(id).parents.length > 0 && nodeAt(id).parents.every(cslLit);
+// заблокирован: соперник по развилке выбран (узел навсегда вне игры)
+const cslBlocked = id => { const r = nodeAt(id).rival; return r != null && cslLit(r); };
+// доступный (фронтир-выбор): не зажжён, не заблокирован, хотя бы один родитель зажжён
+// (OR — у развилки слияние открывается выбором любой из двух веток)
+const cslAvail = id => !cslLit(id) && !cslBlocked(id) && nodeAt(id).parents.length > 0 && nodeAt(id).parents.some(cslLit);
 function maxLitTier() { let m = 0; for (const id of S.csl.lit) { const t = nodeAt(id).tier; if (t > m) m = t; } return m; }
 
 // metaBonus — перманентные бонусы из зажжённых узлов. НЕ хранится в сейве (считаем из lit).
-// spins-узел → УСКОРЕНИЕ РЕГЕНА, а не +кап: ходы фармятся рекламой без лимита, поэтому
-// бесконечный кап раздулся бы (constellation.md §3 ⚠️) — реген безопаснее и сюрджикально
-// дешевле (1 формула против ~13 ссылок на SPINS_MAX). exp/harda — аддитивные множители
-// к получаемой экспе/харде (пассив + тройки слота, §6).
-let metaBonus = { spinsRegen: 0, expMul: 1, hardaMul: 1 };
+// exp/harda — аддитивные множители к получаемой экспе/харде (пассив + тройки слота, §6).
+let metaBonus = { expMul: 1, hardaMul: 1 };
 function cslComputeMeta() {
-  let sr = 0, em = 0, hm = 0;
+  let em = 0, hm = 0;
   for (const id of S.csl.lit) {
     const n = nodeAt(id); if (!n || !n.type) continue;
-    if (n.type === "spins") sr += n.val; else if (n.type === "exp") em += n.val; else hm += n.val;
+    if (n.type === "exp") em += n.val; else hm += n.val;
   }
-  metaBonus = { spinsRegen: sr, expMul: 1 + em, hardaMul: 1 + hm };
+  metaBonus = { expMul: 1 + em, hardaMul: 1 + hm };
 }
-const regenMs = () => Math.max(5000, Math.round(REGEN_MS / (1 + metaBonus.spinsRegen)));
 cslComputeMeta();
 
 const cslOverlay = document.getElementById("cslOverlay");
@@ -2066,6 +2146,12 @@ function cslShowHint(txt) {
   clearTimeout(cslHintTimer);
   cslHintTimer = setTimeout(() => cslHintEl.classList.remove("show"), 1800);
 }
+// кнопка «+1 ход за рекламу»: 1 раз за ран (сброс при перерождении) — не фарм (запрос автора)
+function cslAdRefresh() {
+  const btn = document.getElementById("cslAd");
+  btn.disabled = !!S.csl.adUsed;
+  btn.textContent = S.csl.adUsed ? "🎬 ход за рекламу взят · переродись, чтобы снова" : "🎬 +1 ход за рекламу";
+}
 function renderConstellation(smooth) {
   cslWrap.classList.toggle("gfxlow", GFX_LOW);
   const frontierTier = maxLitTier();
@@ -2074,8 +2160,8 @@ function renderConstellation(smooth) {
   const W = cslScroll.clientWidth || 360;
   const H = (revealTier + 1) * TIER_H + 60;
   cslContent.style.height = H + "px";
-  // фон небо→космос: непрерывный градиент по высоте (день внизу → космос вверху), §5
-  cslContent.style.background = "linear-gradient(to top, #acd8f5 0%, #4a90d9 16%, #d97b4a 30%, #2a3a6b 46%, #1a2342 64%, #0b1026 82%, #05060f 100%)";
+  // фон — звёздное небо: тёмная сине-чёрная глубина по всей высоте (запрос автора 2026-06-16)
+  cslContent.style.background = "linear-gradient(to top, #060a1c 0%, #0a1030 55%, #10173f 100%)";
   const colL = 0.16 * W, colW = 0.68 * W;           // лента в центральных ~68% ширины
   const X = x => colL + ((x + 1) / 2) * colW;
   const Y = tier => H - (tier * TIER_H + TIER_H * 0.6); // tier 0 внизу, выше = больше прогресс
@@ -2086,17 +2172,18 @@ function renderConstellation(smooth) {
     const pn = _cslNodes[p], bright = cslLit(n.id) && cslLit(p);
     edges += `<line x1="${X(pn.x).toFixed(1)}" y1="${Y(pn.tier).toFixed(1)}" x2="${X(n.x).toFixed(1)}" y2="${Y(n.tier).toFixed(1)}" stroke="${bright ? "#ffe08a" : "#3a4570"}" stroke-width="${bright ? 4 : 3}" stroke-linecap="round" opacity="${bright ? 0.95 : 0.5}"/>`;
   }
-  // звёзды — детерминированные, в верхней (космической) половине; твинкл только не на GFX_LOW
-  let stars = "", sr = cslMul(99), starTop = H * 0.5;
-  for (let i = 0; i < 40; i++) {
-    const sx = sr() * W, sy = sr() * starTop, sz = 1 + sr() * 1.6;
-    stars += `<div class="cslStar${GFX_LOW ? "" : " tw"}" style="left:${sx.toFixed(0)}px;top:${sy.toFixed(0)}px;width:${sz.toFixed(1)}px;height:${sz.toFixed(1)}px;animation-delay:${(sr() * 2.4).toFixed(2)}s"></div>`;
+  // звёзды — детерминированные, по ВСЕЙ высоте неба; твинкл только не на GFX_LOW
+  let stars = "", sr = cslMul(99), starN = Math.min(160, Math.round(H / 9));
+  for (let i = 0; i < starN; i++) {
+    const sx = sr() * W, sy = sr() * H, sz = 1 + sr() * 1.7;
+    stars += `<div class="cslStar${GFX_LOW ? "" : " tw"}" style="left:${sx.toFixed(0)}px;top:${sy.toFixed(0)}px;width:${sz.toFixed(1)}px;height:${sz.toFixed(1)}px;animation-delay:${(sr() * 2.6).toFixed(2)}s"></div>`;
   }
   let nodeH = "";
   for (const n of nodes) {
     let cls = "cslNode", emoji = "✦", color = "#9fb4e8";
     if (n.type) { const ty = CSL_TYPES[n.type]; emoji = ty.e; color = ty.c; }
     if (cslLit(n.id)) { cls += " lit"; if (n.tier === frontierTier) cls += " frontier"; } // маркер игрока = фронтир
+    else if (cslBlocked(n.id)) { cls += " blocked"; emoji = "🔒"; }                        // соперник выбран
     else if (cslAvail(n.id)) cls += " avail";
     else cls += (n.tier <= frontierTier + 1) ? " fog" : " deep";
     nodeH += `<div class="${cls}" data-id="${n.id}" style="left:${X(n.x).toFixed(1)}px;top:${Y(n.tier).toFixed(1)}px;color:${color};${cslLit(n.id) ? `background:${color};` : ""}">${n.id === 0 ? "🌱" : emoji}</div>`;
@@ -2104,8 +2191,9 @@ function renderConstellation(smooth) {
   cslContent.innerHTML =
     `<svg width="${W}" height="${H}" style="position:absolute;inset:0;pointer-events:none">${edges}</svg>` + stars + nodeH;
   document.getElementById("cslMoves").textContent = `🔆 ходов: ${S.csl.moves}`;
-  // камера → фронтир (highest lit), ~62% вниз вьюпорта (smooth, с фолбэком для старых webview)
-  const top = Math.max(0, Y(frontierTier) - cslScroll.clientHeight * 0.62);
+  cslAdRefresh();
+  // камера → фронтир (highest lit), ~55% вниз вьюпорта (выше нижней панели; фолбэк для старых webview)
+  const top = Math.max(0, Y(frontierTier) - cslScroll.clientHeight * 0.55);
   try { cslScroll.scrollTo({ top, behavior: smooth ? "smooth" : "auto" }); }
   catch (e) { cslScroll.scrollTop = top; }
 }
@@ -2120,8 +2208,10 @@ function cslLight(id) {
 cslContent.addEventListener("click", e => {
   const el = e.target.closest(".cslNode"); if (!el) return;
   const id = +el.dataset.id;
-  if (!cslAvail(id)) { if (!cslLit(id)) cslShowHint("Сначала зажги путь ниже"); return; }
-  if (S.csl.moves <= 0) { cslShowHint("Нет ходов — 🎬 посмотри рекламу за ход"); return; }
+  if (cslLit(id)) return;
+  if (cslBlocked(id)) { cslShowHint("Эта ветка заблокирована — ты выбрал другую"); return; }
+  if (!cslAvail(id)) { cslShowHint("Сначала зажги путь ниже"); return; }
+  if (S.csl.moves <= 0) { cslShowHint("Нет ходов — переродись или 🎬 посмотри рекламу"); return; }
   cslLight(id);
 });
 document.getElementById("cslBtn").addEventListener("click", () => {
@@ -2130,10 +2220,13 @@ document.getElementById("cslBtn").addEventListener("click", () => {
 });
 document.getElementById("cslClose").addEventListener("click", () => cslOverlay.classList.remove("show"));
 cslOverlay.addEventListener("click", e => { if (e.target === cslOverlay) cslOverlay.classList.remove("show"); });
-// +1 ход за рекламу, без лимита (ads.md §4): награда ТОЛЬКО по досмотру; скип → без хода, без тупика
+// +1 ход за рекламу — 1 раз за ран (ads.md §4): награда ТОЛЬКО по досмотру; скип → без хода, без тупика
 document.getElementById("cslAd").addEventListener("click", () => {
-  showAd(() => { S.csl.moves++; renderConstellation(false); save(); cslShowHint("🎬 +1 ход!"); },
-         () => cslShowHint("Реклама не загрузилась — попробуй позже"));
+  if (S.csl.adUsed) { cslShowHint("Ход за рекламу уже взят — переродись, чтобы снова"); return; }
+  showAd(() => {
+    S.csl.moves++; S.csl.adUsed = true;
+    renderConstellation(false); save(); cslShowHint("🎬 +1 ход!");
+  }, () => cslShowHint("Реклама не загрузилась — попробуй позже"));
 });
 
 /* ═══════════ гача-коллекция ═══════════ */
@@ -2962,7 +3055,13 @@ function autoTutEnd() {
   S.autoTutDone = true; S.obSpins = 0; // веха: считаем 5 спинов до магазина заново (v15)
   save(); update(); say("idle", "😺");
 }
-function shopTutEnd()     { miniTutEnd(); save(); update(); say("idle", "😺"); }
+function shopTutEnd() {
+  miniTutEnd();
+  // подарок-турбо стартует ТОЛЬКО по завершении тутора (раньше таймер тикал во время
+  // обучения — запрос автора 2026-06-16): турбо тир2 (×2 быстрее руки) на 1 минуту
+  S.turboUntil = Date.now() + 60 * 1000; S.turboTier = 2;
+  save(); update(); say("idle", "😺");
+}
 function rouletteTutEnd() { miniTutEnd(); save(); update(); say("idle", "😺"); }
 function tutStart() {
   TUT.active = true; TUT.spins = 0;
@@ -2979,9 +3078,8 @@ function startAutoTut() {
 }
 function startShopTut() {
   S.shopUnlocked = true;
-  // подарок: турбо-автоспин на МАКСИМУМЕ (тир2 = ×2 быстрее руки) на 1 минуту (v15.2).
-  // В магазине этот инап берётся дважды — за 2 просмотра рекламы (отражено в туторе)
-  S.turboUntil = Date.now() + 60 * 1000; S.turboTier = 2;
+  // подарок-турбо выдаётся в shopTutEnd (после прохождения тутора), чтобы таймер не тикал
+  // во время обучения (запрос автора 2026-06-16)
   update();
   TUT.active = true; tutGoto("shopTut");
 }
@@ -3015,6 +3113,25 @@ document.getElementById("resetLink").addEventListener("click", e => {
   if (confirm("Сбросить весь прогресс прототипа?")) wipeSave();
 });
 
+/* ═══════════ DEV-КНОПКИ — УДАЛИТЬ ПЕРЕД РЕЛИЗОМ (этот блок + #devPanel в CSS и разметке) ═══════════ */
+// выдача масштабируется с уровнем перерождения, чтобы оставаться полезной на лейте
+document.getElementById("devHarda").addEventListener("click", () => {
+  S.harda += 10000 * global(); update(); save();
+});
+document.getElementById("devExp").addEventListener("click", () => {
+  S.exp += Math.round(goal() * 0.5); update(); save();
+});
+document.getElementById("devTickets").addEventListener("click", () => {
+  S.tickets += 20; update();
+  if (rouletteOverlay.classList.contains("show")) updateRoulette();
+  save();
+});
+// v13.6: ручной тоггл тира графики (для теста на устройстве; авто-детект — gfxSample)
+document.getElementById("devGfx").addEventListener("click", () => setGfx(!GFX_LOW));
+document.getElementById("devWipe").addEventListener("click", () => {
+  if (confirm("DEV: стереть сейв и начать с нуля?")) wipeSave();
+});
+
 /* ═══════════ отрисовка ═══════════ */
 function update() {
   // прогрессивное раскрытие UI (v15): бары и кнопки видны только после своей вехи
@@ -3028,7 +3145,7 @@ function update() {
   document.getElementById("rebirthBtn").style.display = S.rebirthUnlocked ? "" : "none";
   document.getElementById("rouletteBtn").style.display = S.rouletteUnlocked ? "" : "none";
 
-  const secLeft = Math.max(0, Math.ceil((regenMs() - (Date.now() - S.lastRegen)) / 1000));
+  const secLeft = Math.max(0, Math.ceil((REGEN_MS - (Date.now() - S.lastRegen)) / 1000));
   document.getElementById("spinsFill").style.width = (S.spins / SPINS_MAX * 100) + "%";
   document.getElementById("spinsVal").innerHTML =
     `${S.spins}/${SPINS_MAX}` + (S.spins < SPINS_MAX ? ` <small>+1 через ${secLeft}с</small>` : "");
@@ -3112,6 +3229,8 @@ function update() {
 }
 
 document.getElementById("buildVer").textContent = "build " + BUILD;
+// подпись DEV-кнопки = начальный тир (без записи в localStorage — это лишь догадка) (v13.6)
+document.getElementById("devGfx").textContent = "GFX: " + (GFX_LOW ? "LOW" : "HIGH");
 regen(); update();
 if (tg) {                                  // Telegram Mini App: на весь экран, свайп-вниз не закрывает (мешал бы рычагу)
   tg.ready(); tg.expand();
