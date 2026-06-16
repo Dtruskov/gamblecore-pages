@@ -223,6 +223,13 @@
     background: linear-gradient(135deg, #f0a830, #d4861a); color: #2a1d05; text-align: center;
   }
   #rouletteBtn small { font-weight: 700; opacity: .9; font-size: 12px; }
+  /* Созвездие (constellation.md) — вход в мета-лабиринт, космический градиент */
+  #cslBtn {
+    height: 140px; padding: 0 8px; display: flex; flex-direction: column; gap: 4px;
+    align-items: center; justify-content: center; line-height: 1.25;
+    background: linear-gradient(160deg, #3a2c8f, #0b1026); color: #dfe9ff; text-align: center;
+  }
+  #cslBtn small { font-weight: 700; opacity: .85; font-size: 12px; color: #aab9ec; }
 
   footer {
     text-align: center; font-size: 10.5px; color: #6f717a; padding-bottom: 4px;
@@ -230,6 +237,63 @@
   footer a { color: #6f717a; }
   #buildVer { margin-top: 2px; font-size: 9px; color: #4a4c54; letter-spacing: .3px; }
 
+
+  /* ── Созвездие — оверлей мета-лабиринта (constellation.md §5) ── */
+  #cslOverlay .cslWrap {
+    position: relative; width: min(96%, 460px); height: 88vh;
+    background: #05060f; border-radius: 16px; overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .cslHud {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 6;
+    display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+    background: linear-gradient(#05060fee, #05060f00);
+  }
+  #cslMoves { font-weight: 700; font-size: 14px; color: #cfe3ff; }
+  .cslHud .btn { flex: 0 0 auto; padding: 8px 10px; font-size: 12px; }
+  #cslClose {
+    margin-left: auto; flex: 0 0 auto; border: none; background: #ffffff22;
+    color: #cfe3ff; font-size: 15px; font-weight: 700; width: 34px; height: 34px;
+    border-radius: 50%; cursor: pointer; font-family: inherit;
+  }
+  .cslScroll { flex: 1; overflow-y: auto; overflow-x: hidden; position: relative; -webkit-overflow-scrolling: touch; }
+  .cslContent { position: relative; width: 100%; }
+  .cslFog {
+    position: absolute; top: 0; left: 0; right: 0; height: 38%; z-index: 4;
+    pointer-events: none; background: linear-gradient(#05060f 0%, #05060fcc 42%, #05060f00 100%);
+  }
+  .cslHint {
+    position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
+    z-index: 6; background: #000000cc; color: #ffd34d; font-weight: 700;
+    font-size: 13px; padding: 8px 14px; border-radius: 10px; opacity: 0;
+    transition: opacity .25s; pointer-events: none; text-align: center; max-width: 80%;
+  }
+  .cslHint.show { opacity: 1; }
+  .cslStar { position: absolute; border-radius: 50%; background: #fff; pointer-events: none; }
+  .cslStar.tw { animation: cslTwinkle 2.4s ease-in-out infinite; }
+  @keyframes cslTwinkle { 50% { opacity: .25; } }
+  .cslNode {
+    position: absolute; transform: translate(-50%, -50%);
+    width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; line-height: 1; user-select: none;
+    border: 2px solid transparent; background: #141d3a; color: #8a93b5;
+  }
+  .cslNode.lit { box-shadow: 0 0 12px currentColor; border-color: currentColor; }
+  .cslNode.avail { cursor: pointer; border-color: #ffffff; animation: cslPulse 1.2s ease infinite; }
+  .cslNode.frontier::after {
+    content: ""; position: absolute; inset: -7px; border-radius: 50%;
+    border: 2px solid #cfe3ff; opacity: .7; animation: cslPulse 1.2s ease infinite;
+  }
+  .cslNode.fog { opacity: .34; filter: blur(1px); }
+  .cslNode.deep { opacity: .14; filter: blur(2.5px); }
+  @keyframes cslPulse { 50% { box-shadow: 0 0 16px #fff; transform: translate(-50%,-50%) scale(1.12); } }
+  /* GFX_LOW: без свечения/пульса/блюра/твинкла — плоско, дёшево по пейнту (§5) */
+  .cslWrap.gfxlow .cslNode { animation: none !important; box-shadow: none !important; filter: none !important; }
+  .cslWrap.gfxlow .cslNode.frontier::after { animation: none; }
+  .cslWrap.gfxlow .cslStar { animation: none !important; }
+  .cslWrap.gfxlow .cslNode.fog { opacity: .42; }
+  .cslWrap.gfxlow .cslNode.deep { opacity: .22; }
 
   /* ── modal ── */
   .overlay {
@@ -603,6 +667,7 @@
       <div id="rebirthFill"></div><div id="rebirthTxt">—</div>
     </button>
     <button class="btn" id="rouletteBtn">🎟️ Рулетка экспы</button>
+    <button class="btn" id="cslBtn" style="display:none">🌌 Созвездие<br><small>—</small></button>
     <button class="btn" id="autoBtn" style="display:none">автоспин: выкл</button>
   </div>
 
@@ -696,6 +761,19 @@
     <div class="jptimer"><div class="jptimerfill" id="jpTimerFill"></div><span class="jptimertxt" id="jpTimerTxt">5с</span></div>
     <button class="jpclaim" id="jpClaim">🎬 ЗАБРАТЬ ДЖЕКПОТ</button>
     <button class="jpclose" id="jpClose">закрыть</button>
+  </div>
+</div>
+
+<div class="overlay" id="cslOverlay">
+  <div class="cslWrap">
+    <div class="cslHud">
+      <span id="cslMoves">🔆 ходов: 0</span>
+      <button class="btn accent" id="cslAd">🎬 +1 ход</button>
+      <button id="cslClose">✕</button>
+    </div>
+    <div class="cslScroll" id="cslScroll"><div class="cslContent" id="cslContent"></div></div>
+    <div class="cslFog"></div>
+    <div class="cslHint" id="cslHint"></div>
   </div>
 </div>
 
@@ -828,6 +906,11 @@ const DEFAULTS = () => ({
   // билеты Рулетки экспы (v14): инвентарь, переживают перерождение. SAVE_V НЕ бампали —
   // поле аддитивно, старые сейвы (v17 без tickets) подхватят дефолт 0 (balance.md §10)
   tickets: 0,
+  // Созвездие (constellation.md): мета-лабиринт перманентных бонусов. lit — id зажжённых
+  // узлов, moves — банк ходов, seen — макс. достигнутый tier. Переживает перерождение
+  // (мета, не ран-прогресс). SAVE_V НЕ бампали — поле добавляется с дефолтом (узел 0 =
+  // стартовый «корень», уже зажжён, без бонуса). metaBonus НЕ хранится — считается из lit.
+  csl: { lit: [0], moves: 0, seen: 0 },
   // прогрессивное раскрытие UI (v15, 2026-06-15): на старте видны только кот+барабаны+
   // рука; бары и кнопки открываются по ходу обучения (tutorial.md). Флаги аддитивны —
   // старые сейвы грандфазерятся в load() (всё открыто). obSpins — счётчик спинов после
@@ -961,6 +1044,7 @@ function cloudInit(done) {
           // чужую версию сейва молча отбрасываем — как и локальную (SAVE_V)
           if (d.v === SAVE_V && (d.savedAt || 0) > (S.savedAt || 0)) {
             S = Object.assign(DEFAULTS(), d);
+            cslComputeMeta(); // metaBonus из обновлённого lit (Созвездие)
             localStorage.setItem("gamblecore_proto", JSON.stringify(S));
           }
         } catch (e) {}
@@ -1344,7 +1428,7 @@ async function doSpin(durMul, handY) {
   if (heatSym && !won) nearMiss();
   // пассивная экспа: бар перерождения ползёт каждый спин (balance.md §4); ×2 от буста,
   // ×expBoost() на первых 3 уровнях (туториальная секция быстрее, v15.2)
-  S.exp += Math.round(EXP_PASSIVE * global() * platMult() * tempMult() * expBoost());
+  S.exp += Math.round(EXP_PASSIVE * global() * platMult() * tempMult() * expBoost() * metaBonus.expMul);
   spinning = false;
   update(); deferSave(); // сейв за кадр — не блокирует пейнт победы (v13.6)
   if (TUT.active) tutOnSpinEnd();
@@ -1463,8 +1547,8 @@ function evaluate() {
 
   // джекпот 3×⚡: базовые выплаты всех трёх ресурсов разом (balance.md §1a)
   if (wins.length === 3) {
-    const h = Math.round(SYMS[0].pay * g * S.hardaMult * tempMult());
-    const e = Math.round(SYMS[1].pay * g * platMult() * tempMult() * expBoost());
+    const h = Math.round(SYMS[0].pay * g * S.hardaMult * tempMult() * metaBonus.hardaMul);
+    const e = Math.round(SYMS[1].pay * g * platMult() * tempMult() * expBoost() * metaBonus.expMul);
     const credited = Math.min(SYMS[2].pay, SPINS_MAX - S.spins); // кап жёсткий
     S.harda += h; S.totalWon += h; S.exp += e; S.spins += credited;
     winTxt.textContent = `⚡ СУПЕР-ВИН! +${fmt(h)} 🪙 +${fmt(e)} 🧿` + (credited > 0 ? ` +${credited} 🎲` : "");
@@ -1480,7 +1564,7 @@ function evaluate() {
 
   const sym = wins[0];
   if (sym.id === "harda") {
-    const amt = Math.round(sym.pay * g * S.hardaMult * tempMult()); // платина харду НЕ множит — валюта гачи, иначе снежный ком
+    const amt = Math.round(sym.pay * g * S.hardaMult * tempMult() * metaBonus.hardaMul); // платина харду НЕ множит — валюта гачи; metaBonus (Созвездие) множит
     S.harda += amt; S.totalWon += amt;
     winCount("WIN +", amt, " харды");
     goldFlash();
@@ -1490,7 +1574,7 @@ function evaluate() {
     for (let i = 0; i < 4; i++) sCoin(i);
     if (Math.random() < .4) say("win", "😸");
   } else if (sym.id === "exp") {
-    const amt = Math.round(sym.pay * g * platMult() * tempMult() * expBoost());
+    const amt = Math.round(sym.pay * g * platMult() * tempMult() * expBoost() * metaBonus.expMul);
     S.exp += amt;
     winCount("🔥 BIG WIN +", amt, " экспы");
     goldFlash();
@@ -1668,10 +1752,10 @@ setInterval(() => {
 
 /* ═══════════ реген спинов ═══════════ */
 function regen() {
-  const now = Date.now();
+  const now = Date.now(), ms = regenMs(); // spins-узлы Созвездия ускоряют реген (regenMs)
   if (S.spins >= SPINS_MAX) { S.lastRegen = now; return; }
-  while (now - S.lastRegen >= REGEN_MS && S.spins < SPINS_MAX) {
-    S.spins++; S.lastRegen += REGEN_MS;
+  while (now - S.lastRegen >= ms && S.spins < SPINS_MAX) {
+    S.spins++; S.lastRegen += ms;
   }
   if (S.spins >= SPINS_MAX) S.lastRegen = now;
 }
@@ -1738,6 +1822,7 @@ document.getElementById("rbGo").addEventListener("click", () => {
   S.level++; S.exp = 0;
   S.upgCount = 0; S.hardaMult = 1;
   S.spins = SPINS_MAX;
+  S.csl.moves++; // +1 ход в Созвездие за перерождение (constellation.md §4) — узлы НЕ гасятся
   S.obSpins = 0; // веха: считаем спины после перерождения заново (автоспин на 3-м, v15)
   // перезрел → стартовая харда: тир × цена ролла УЖЕ нового уровня (balance.md §4)
   S.harda = tiers * rollCost();
@@ -1901,6 +1986,155 @@ document.getElementById("rltClose").addEventListener("click", () => {
 });
 rltSpinBtn.addEventListener("click", rltSpinOne);
 rltAllBtn.addEventListener("click", rltSpinAll);
+
+/* ═══════════ Созвездие — мета-лабиринт (constellation.md) ═══════════ */
+// Вьющийся вверх лабиринт перманентных бонусов. Узлы и их бонусы переживают
+// перерождение (мета, не ран-прогресс). Ходы: +1 за перерождение, +1 за рекламу (без
+// лимита). Развилка = только порядок прокачки: обе ветки доступны, ничего не теряется.
+// Топология детерминирована (PRNG с фикс-сидом) — одинакова у всех и стабильна между
+// сессиями (никакого Math.random в раскладке). Весь визуал рисуется кодом (SVG/CSS).
+const CSL_SEED = 1337;
+const CSL_TYPES = { spins: { c: "#f2a623", e: "⚡" }, exp: { c: "#2ec4b6", e: "✨" }, harda: { c: "#e8c14a", e: "🪙" } };
+// mulberry32 — детерминированный PRNG; без ?? и прочего ES2020, чтобы парсилось на старых webview
+function cslMul(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+let _cslRng = null, _cslNodes = [], _cslSpine = 0;
+function cslInitGen() {
+  _cslRng = cslMul(CSL_SEED); _cslNodes = [];
+  // узел 0 — стартовый «корень»: уже зажжён (в S.csl.lit), без типа/бонуса
+  _cslNodes.push({ id: 0, tier: 0, type: null, val: 0, x: 0, parents: [], children: [] });
+  _cslSpine = 0;
+}
+// тип узла с лёгким перекосом, но все три встречаются (constellation.md §2)
+function cslType() { const r = _cslRng(); return r < 0.30 ? "spins" : r < 0.64 ? "exp" : "harda"; }
+// val мягко растёт с tier (база ×(1+tier·0.02)); числа скромные (constellation.md §3)
+function cslVal(type, tier) { const base = type === "spins" ? 0.05 : 0.03; return Math.round(base * (1 + tier * 0.02) * 1e4) / 1e4; }
+function cslAdd(tier, type, x, parents) {
+  const id = _cslNodes.length;
+  _cslNodes.push({ id, tier, type, val: type ? cslVal(type, tier) : 0, x, parents: parents.slice(), children: [] });
+  parents.forEach(p => _cslNodes[p].children.push(id));
+  return id;
+}
+// нарастить лабиринт на один сегмент от текущего «спайна» (фронтир-слияния)
+function cslGrow() {
+  const t0 = _cslNodes[_cslSpine].tier;
+  if (_cslRng() < 0.45) {                 // развилка: 2 ветки длины k → сходятся в узле-слиянии
+    const k = _cslRng() < 0.5 ? 2 : 3;
+    let a = _cslSpine, b = _cslSpine;
+    for (let i = 1; i <= k; i++) { a = cslAdd(t0 + i, cslType(), -0.6, [a]); b = cslAdd(t0 + i, cslType(), 0.6, [b]); }
+    _cslSpine = cslAdd(t0 + k + 1, cslType(), 0, [a, b]); // слияние доступно только когда обе ветки пройдены
+  } else {                                 // линейный сегмент: 1 узел с лёгким вилянием x
+    _cslSpine = cslAdd(t0 + 1, cslType(), _cslRng() * 1.2 - 0.6, [_cslSpine]);
+  }
+}
+function nodeAt(id) { if (!_cslRng) cslInitGen(); while (_cslNodes.length <= id) cslGrow(); return _cslNodes[id]; }
+function cslEnsureTier(maxTier) {
+  if (!_cslRng) cslInitGen();
+  let guard = 0;
+  while (_cslNodes[_cslSpine].tier < maxTier && guard++ < 400) cslGrow();
+}
+const cslLit = id => S.csl.lit.indexOf(id) >= 0;
+// доступный (фронтир-выбор): не зажжён, но ВСЕ родители зажжены
+const cslAvail = id => !cslLit(id) && nodeAt(id).parents.length > 0 && nodeAt(id).parents.every(cslLit);
+function maxLitTier() { let m = 0; for (const id of S.csl.lit) { const t = nodeAt(id).tier; if (t > m) m = t; } return m; }
+
+// metaBonus — перманентные бонусы из зажжённых узлов. НЕ хранится в сейве (считаем из lit).
+// spins-узел → УСКОРЕНИЕ РЕГЕНА, а не +кап: ходы фармятся рекламой без лимита, поэтому
+// бесконечный кап раздулся бы (constellation.md §3 ⚠️) — реген безопаснее и сюрджикально
+// дешевле (1 формула против ~13 ссылок на SPINS_MAX). exp/harda — аддитивные множители
+// к получаемой экспе/харде (пассив + тройки слота, §6).
+let metaBonus = { spinsRegen: 0, expMul: 1, hardaMul: 1 };
+function cslComputeMeta() {
+  let sr = 0, em = 0, hm = 0;
+  for (const id of S.csl.lit) {
+    const n = nodeAt(id); if (!n || !n.type) continue;
+    if (n.type === "spins") sr += n.val; else if (n.type === "exp") em += n.val; else hm += n.val;
+  }
+  metaBonus = { spinsRegen: sr, expMul: 1 + em, hardaMul: 1 + hm };
+}
+const regenMs = () => Math.max(5000, Math.round(REGEN_MS / (1 + metaBonus.spinsRegen)));
+cslComputeMeta();
+
+const cslOverlay = document.getElementById("cslOverlay");
+const cslScroll = document.getElementById("cslScroll");
+const cslContent = document.getElementById("cslContent");
+const cslHintEl = document.getElementById("cslHint");
+const cslWrap = document.querySelector("#cslOverlay .cslWrap");
+const TIER_H = 96, CSL_REVEAL = 3; // px на tier; сколько tier тумана показывать над фронтиром
+let cslHintTimer = null;
+function cslShowHint(txt) {
+  cslHintEl.textContent = txt; cslHintEl.classList.add("show");
+  clearTimeout(cslHintTimer);
+  cslHintTimer = setTimeout(() => cslHintEl.classList.remove("show"), 1800);
+}
+function renderConstellation(smooth) {
+  cslWrap.classList.toggle("gfxlow", GFX_LOW);
+  const frontierTier = maxLitTier();
+  const revealTier = frontierTier + CSL_REVEAL;
+  cslEnsureTier(revealTier + 1);
+  const W = cslScroll.clientWidth || 360;
+  const H = (revealTier + 1) * TIER_H + 60;
+  cslContent.style.height = H + "px";
+  // фон небо→космос: непрерывный градиент по высоте (день внизу → космос вверху), §5
+  cslContent.style.background = "linear-gradient(to top, #acd8f5 0%, #4a90d9 16%, #d97b4a 30%, #2a3a6b 46%, #1a2342 64%, #0b1026 82%, #05060f 100%)";
+  const colL = 0.16 * W, colW = 0.68 * W;           // лента в центральных ~68% ширины
+  const X = x => colL + ((x + 1) / 2) * colW;
+  const Y = tier => H - (tier * TIER_H + TIER_H * 0.6); // tier 0 внизу, выше = больше прогресс
+  const nodes = _cslNodes.filter(n => n.tier <= revealTier);
+  // рёбра (SVG за узлами): зажжённый путь ярче, ещё не пройденные приглушены
+  let edges = "";
+  for (const n of nodes) for (const p of n.parents) {
+    const pn = _cslNodes[p], bright = cslLit(n.id) && cslLit(p);
+    edges += `<line x1="${X(pn.x).toFixed(1)}" y1="${Y(pn.tier).toFixed(1)}" x2="${X(n.x).toFixed(1)}" y2="${Y(n.tier).toFixed(1)}" stroke="${bright ? "#ffe08a" : "#3a4570"}" stroke-width="${bright ? 4 : 3}" stroke-linecap="round" opacity="${bright ? 0.95 : 0.5}"/>`;
+  }
+  // звёзды — детерминированные, в верхней (космической) половине; твинкл только не на GFX_LOW
+  let stars = "", sr = cslMul(99), starTop = H * 0.5;
+  for (let i = 0; i < 40; i++) {
+    const sx = sr() * W, sy = sr() * starTop, sz = 1 + sr() * 1.6;
+    stars += `<div class="cslStar${GFX_LOW ? "" : " tw"}" style="left:${sx.toFixed(0)}px;top:${sy.toFixed(0)}px;width:${sz.toFixed(1)}px;height:${sz.toFixed(1)}px;animation-delay:${(sr() * 2.4).toFixed(2)}s"></div>`;
+  }
+  let nodeH = "";
+  for (const n of nodes) {
+    let cls = "cslNode", emoji = "✦", color = "#9fb4e8";
+    if (n.type) { const ty = CSL_TYPES[n.type]; emoji = ty.e; color = ty.c; }
+    if (cslLit(n.id)) { cls += " lit"; if (n.tier === frontierTier) cls += " frontier"; } // маркер игрока = фронтир
+    else if (cslAvail(n.id)) cls += " avail";
+    else cls += (n.tier <= frontierTier + 1) ? " fog" : " deep";
+    nodeH += `<div class="${cls}" data-id="${n.id}" style="left:${X(n.x).toFixed(1)}px;top:${Y(n.tier).toFixed(1)}px;color:${color};${cslLit(n.id) ? `background:${color};` : ""}">${n.id === 0 ? "🌱" : emoji}</div>`;
+  }
+  cslContent.innerHTML =
+    `<svg width="${W}" height="${H}" style="position:absolute;inset:0;pointer-events:none">${edges}</svg>` + stars + nodeH;
+  document.getElementById("cslMoves").textContent = `🔆 ходов: ${S.csl.moves}`;
+  // камера → фронтир (highest lit), ~62% вниз вьюпорта (smooth, с фолбэком для старых webview)
+  const top = Math.max(0, Y(frontierTier) - cslScroll.clientHeight * 0.62);
+  try { cslScroll.scrollTo({ top, behavior: smooth ? "smooth" : "auto" }); }
+  catch (e) { cslScroll.scrollTop = top; }
+}
+function cslLight(id) {
+  S.csl.moves--; S.csl.lit.push(id);
+  const t = nodeAt(id).tier; if (t > S.csl.seen) S.csl.seen = t;
+  cslComputeMeta();
+  vibrate(30);
+  renderConstellation(true);
+  update(); save();
+}
+cslContent.addEventListener("click", e => {
+  const el = e.target.closest(".cslNode"); if (!el) return;
+  const id = +el.dataset.id;
+  if (!cslAvail(id)) { if (!cslLit(id)) cslShowHint("Сначала зажги путь ниже"); return; }
+  if (S.csl.moves <= 0) { cslShowHint("Нет ходов — 🎬 посмотри рекламу за ход"); return; }
+  cslLight(id);
+});
+document.getElementById("cslBtn").addEventListener("click", () => {
+  cslOverlay.classList.add("show");
+  renderConstellation(false);
+});
+document.getElementById("cslClose").addEventListener("click", () => cslOverlay.classList.remove("show"));
+cslOverlay.addEventListener("click", e => { if (e.target === cslOverlay) cslOverlay.classList.remove("show"); });
+// +1 ход за рекламу, без лимита (ads.md §4): награда ТОЛЬКО по досмотру; скип → без хода, без тупика
+document.getElementById("cslAd").addEventListener("click", () => {
+  showAd(() => { S.csl.moves++; renderConstellation(false); save(); cslShowHint("🎬 +1 ход!"); },
+         () => cslShowHint("Реклама не загрузилась — попробуй позже"));
+});
 
 /* ═══════════ гача-коллекция ═══════════ */
 // ролл без выбора (решение 2026-06-12 v2): рулетка сначала выбирает девочку (1/9),
@@ -2772,6 +3006,7 @@ window.addEventListener("resize", () => { if (TUT.active) tutRender(); });
 function wipeSave() {
   localStorage.removeItem("gamblecore_proto");
   S = DEFAULTS();
+  cslComputeMeta(); // metaBonus сброшен к дефолту (Созвездие — только корень)
   update(); save();
   if (!TUT.active) tutStart(); // сброс = снова первый запуск
 }
@@ -2793,7 +3028,7 @@ function update() {
   document.getElementById("rebirthBtn").style.display = S.rebirthUnlocked ? "" : "none";
   document.getElementById("rouletteBtn").style.display = S.rouletteUnlocked ? "" : "none";
 
-  const secLeft = Math.max(0, Math.ceil((REGEN_MS - (Date.now() - S.lastRegen)) / 1000));
+  const secLeft = Math.max(0, Math.ceil((regenMs() - (Date.now() - S.lastRegen)) / 1000));
   document.getElementById("spinsFill").style.width = (S.spins / SPINS_MAX * 100) + "%";
   document.getElementById("spinsVal").innerHTML =
     `${S.spins}/${SPINS_MAX}` + (S.spins < SPINS_MAX ? ` <small>+1 через ${secLeft}с</small>` : "");
@@ -2859,6 +3094,14 @@ function update() {
   rouletteBtn.classList.toggle("blink", S.tickets > 0 || S.harda >= ticketCost());
   // окно рулетки открыто — обновить (харда капает автоспином/регеном)
   if (rouletteOverlay.classList.contains("show") && !rltSpinning) updateRoulette();
+  // Созвездие (constellation.md): кнопка появляется с открытием перерождения (ходы
+  // только за престиж/рекламу); мигает, когда есть ход. Открытое окно — живой счётчик
+  // ходов (перерождение даёт ход на лету) без сброса скролла
+  const cslBtn = document.getElementById("cslBtn");
+  cslBtn.style.display = S.rebirthUnlocked ? "" : "none";
+  cslBtn.querySelector("small").textContent = `🔆 ходов: ${S.csl.moves}`;
+  cslBtn.classList.toggle("blink", S.csl.moves > 0);
+  if (cslOverlay.classList.contains("show")) document.getElementById("cslMoves").textContent = `🔆 ходов: ${S.csl.moves}`;
   // гача открыта на галерее — обновить кнопки роллов (харда капает и автоспином)
   if (gachaOverlay.classList.contains("show") && !rolling && gachaGirl === null && !gachaSummary)
     renderGacha();
